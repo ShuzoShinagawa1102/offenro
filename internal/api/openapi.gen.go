@@ -18,11 +18,42 @@ type HealthResponse struct {
 	Status string `json:"status"`
 }
 
+// Offer defines model for Offer.
+type Offer struct {
+	Amount     int64  `json:"amount"`
+	Currency   string `json:"currency"`
+	Domain     string `json:"domain"`
+	MerchantId string `json:"merchant_id"`
+	OfferId    string `json:"offer_id"`
+	Title      string `json:"title"`
+}
+
+// SearchOffersRequest defines model for SearchOffersRequest.
+type SearchOffersRequest struct {
+	// Domain Example: fashion.shoes
+	Domain  string                  `json:"domain"`
+	Filters *map[string]interface{} `json:"filters,omitempty"`
+
+	// Query Example: 東京で1万円以下のスニーカー
+	Query string `json:"query"`
+}
+
+// SearchOffersResponse defines model for SearchOffersResponse.
+type SearchOffersResponse struct {
+	Offers []Offer `json:"offers"`
+}
+
+// SearchOffersJSONRequestBody defines body for SearchOffers for application/json ContentType.
+type SearchOffersJSONRequestBody = SearchOffersRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
+	// SearchOffers Search offers
+	// (POST /v1/offers/search)
+	SearchOffers(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -39,6 +70,20 @@ func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SearchOffers operation middleware
+func (siw *ServerInterfaceWrapper) SearchOffers(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SearchOffers(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -169,6 +214,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	}
 
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/offers/search", wrapper.SearchOffers)
 
 	return m
 }
@@ -194,11 +240,36 @@ func (response GetHealth200JSONResponse) VisitGetHealthResponse(w http.ResponseW
 	return err
 }
 
+type SearchOffersRequestObject struct {
+	Body *SearchOffersJSONRequestBody
+}
+
+type SearchOffersResponseObject interface {
+	VisitSearchOffersResponse(w http.ResponseWriter) error
+}
+
+type SearchOffers200JSONResponse SearchOffersResponse
+
+func (response SearchOffers200JSONResponse) VisitSearchOffersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
 	// (GET /health)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
+	// SearchOffers Search offers
+	// (POST /v1/offers/search)
+	SearchOffers(ctx context.Context, request SearchOffersRequestObject) (SearchOffersResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -257,6 +328,37 @@ func (sh *strictHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetHealthResponseObject); ok {
 		if err := validResponse.VisitGetHealthResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SearchOffers operation middleware
+func (sh *strictHandler) SearchOffers(w http.ResponseWriter, r *http.Request) {
+	var request SearchOffersRequestObject
+
+	var body SearchOffersJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchOffers(ctx, request.(SearchOffersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchOffers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SearchOffersResponseObject); ok {
+		if err := validResponse.VisitSearchOffersResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

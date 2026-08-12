@@ -1,7 +1,7 @@
 openapi: 3.0.3
 
 info:
-  title: Commerce Protocol
+  title: Offenro Protocol
   version: 0.1.0
 
 paths:
@@ -16,6 +16,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
 
+  /v1/offers/search:
+    post:
+      operationId: searchOffers
+      summary: Search offers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchOffersRequest"
+      responses:
+        "200":
+          description: Offers found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchOffersResponse"
+
 components:
   schemas:
     HealthResponse:
@@ -24,4 +42,54 @@ components:
         - status
       properties:
         status:
+          type: string
+
+    SearchOffersRequest:
+      type: object
+      required:
+        - query
+        - domain
+      properties:
+        query:
+          type: string
+          example: "東京で1万円以下のスニーカー"
+        domain:
+          type: string
+          example: "fashion.shoes"
+        filters:
+          type: object
+          additionalProperties: true
+
+    SearchOffersResponse:
+      type: object
+      required:
+        - offers
+      properties:
+        offers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Offer"
+
+    Offer:
+      type: object
+      required:
+        - offer_id
+        - merchant_id
+        - domain
+        - title
+        - amount
+        - currency
+      properties:
+        offer_id:
+          type: string
+        merchant_id:
+          type: string
+        domain:
+          type: string
+        title:
+          type: string
+        amount:
+          type: integer
+          format: int64
+        currency:
           type: string
