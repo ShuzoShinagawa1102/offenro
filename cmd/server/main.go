@@ -6,11 +6,14 @@ import (
 	"os"
 
 	"github.com/ShuzoShinagawa1102/offenro/internal/api"
+	"github.com/ShuzoShinagawa1102/offenro/internal/merchant"
 	"github.com/ShuzoShinagawa1102/offenro/internal/server"
 )
 
 func main() {
-	s := server.New()
+	merchantClient := merchant.NewClient("http://localhost:8081")
+
+	s := server.New(merchantClient)
 
 	strictHundler := api.NewStrictHandler(s, nil)
 
