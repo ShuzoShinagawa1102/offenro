@@ -16,19 +16,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
 
-  /v1/offers/search:
+  /v1/travel/hotels/search:
     post:
-      operationId: searchOffers
-      summary: Search offers
+      operationId: searchTravelHotels
+      summary: Search hotel offers
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SearchOffersRequest"
+              $ref: "#/components/schemas/TravelHotelSearchRequest"
       responses:
         "200":
-          description: Offers found
+          description: Hotel offers
           content:
             application/json:
               schema:
@@ -44,21 +44,38 @@ components:
         status:
           type: string
 
-    SearchOffersRequest:
+    TravelHotelSearchRequest:
       type: object
       required:
-        - query
-        - domain
+        - location
+        - check_in
+        - check_out
+        - adults
+        - rooms
       properties:
-        query:
+        location:
           type: string
-          example: "東京で1万円以下のスニーカー"
-        domain:
+
+        check_in:
           type: string
-          example: "fashion.shoes"
-        filters:
-          type: object
-          additionalProperties: true
+          format: date
+
+        check_out:
+          type: string
+          format: date
+
+        adults:
+          type: integer
+          minimum: 1
+
+        rooms:
+          type: integer
+          minimum: 1
+
+        max_price:
+          type: integer
+          format: int64
+          minimum: 0
 
     SearchOffersResponse:
       type: object
@@ -82,14 +99,19 @@ components:
       properties:
         offer_id:
           type: string
+
         merchant_id:
           type: string
+
         domain:
           type: string
+
         title:
           type: string
+
         amount:
           type: integer
           format: int64
+
         currency:
           type: string

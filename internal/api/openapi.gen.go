@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // HealthResponse defines model for HealthResponse.
@@ -28,32 +30,32 @@ type Offer struct {
 	Title      string `json:"title"`
 }
 
-// SearchOffersRequest defines model for SearchOffersRequest.
-type SearchOffersRequest struct {
-	// Domain Example: fashion.shoes
-	Domain  string                  `json:"domain"`
-	Filters *map[string]interface{} `json:"filters,omitempty"`
-
-	// Query Example: 東京で1万円以下のスニーカー
-	Query string `json:"query"`
-}
-
 // SearchOffersResponse defines model for SearchOffersResponse.
 type SearchOffersResponse struct {
 	Offers []Offer `json:"offers"`
 }
 
-// SearchOffersJSONRequestBody defines body for SearchOffers for application/json ContentType.
-type SearchOffersJSONRequestBody = SearchOffersRequest
+// TravelHotelSearchRequest defines model for TravelHotelSearchRequest.
+type TravelHotelSearchRequest struct {
+	Adults   int                `json:"adults"`
+	CheckIn  openapi_types.Date `json:"check_in"`
+	CheckOut openapi_types.Date `json:"check_out"`
+	Location string             `json:"location"`
+	MaxPrice *int64             `json:"max_price,omitempty"`
+	Rooms    int                `json:"rooms"`
+}
+
+// SearchTravelHotelsJSONRequestBody defines body for SearchTravelHotels for application/json ContentType.
+type SearchTravelHotelsJSONRequestBody = TravelHotelSearchRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
-	// SearchOffers Search offers
-	// (POST /v1/offers/search)
-	SearchOffers(w http.ResponseWriter, r *http.Request)
+	// SearchTravelHotels Search hotel offers
+	// (POST /v1/travel/hotels/search)
+	SearchTravelHotels(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -79,11 +81,11 @@ func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
-// SearchOffers operation middleware
-func (siw *ServerInterfaceWrapper) SearchOffers(w http.ResponseWriter, r *http.Request) {
+// SearchTravelHotels operation middleware
+func (siw *ServerInterfaceWrapper) SearchTravelHotels(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.SearchOffers(w, r)
+		siw.Handler.SearchTravelHotels(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -214,7 +216,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	}
 
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
-	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/offers/search", wrapper.SearchOffers)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/travel/hotels/search", wrapper.SearchTravelHotels)
 
 	return m
 }
@@ -240,17 +242,17 @@ func (response GetHealth200JSONResponse) VisitGetHealthResponse(w http.ResponseW
 	return err
 }
 
-type SearchOffersRequestObject struct {
-	Body *SearchOffersJSONRequestBody
+type SearchTravelHotelsRequestObject struct {
+	Body *SearchTravelHotelsJSONRequestBody
 }
 
-type SearchOffersResponseObject interface {
-	VisitSearchOffersResponse(w http.ResponseWriter) error
+type SearchTravelHotelsResponseObject interface {
+	VisitSearchTravelHotelsResponse(w http.ResponseWriter) error
 }
 
-type SearchOffers200JSONResponse SearchOffersResponse
+type SearchTravelHotels200JSONResponse SearchOffersResponse
 
-func (response SearchOffers200JSONResponse) VisitSearchOffersResponse(w http.ResponseWriter) error {
+func (response SearchTravelHotels200JSONResponse) VisitSearchTravelHotelsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -267,9 +269,9 @@ type StrictServerInterface interface {
 
 	// (GET /health)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
-	// SearchOffers Search offers
-	// (POST /v1/offers/search)
-	SearchOffers(ctx context.Context, request SearchOffersRequestObject) (SearchOffersResponseObject, error)
+	// SearchTravelHotels Search hotel offers
+	// (POST /v1/travel/hotels/search)
+	SearchTravelHotels(ctx context.Context, request SearchTravelHotelsRequestObject) (SearchTravelHotelsResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -335,11 +337,11 @@ func (sh *strictHandler) GetHealth(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// SearchOffers operation middleware
-func (sh *strictHandler) SearchOffers(w http.ResponseWriter, r *http.Request) {
-	var request SearchOffersRequestObject
+// SearchTravelHotels operation middleware
+func (sh *strictHandler) SearchTravelHotels(w http.ResponseWriter, r *http.Request) {
+	var request SearchTravelHotelsRequestObject
 
-	var body SearchOffersJSONRequestBody
+	var body SearchTravelHotelsJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
 		return
@@ -347,18 +349,18 @@ func (sh *strictHandler) SearchOffers(w http.ResponseWriter, r *http.Request) {
 	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.SearchOffers(ctx, request.(SearchOffersRequestObject))
+		return sh.ssi.SearchTravelHotels(ctx, request.(SearchTravelHotelsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "SearchOffers")
+		handler = middleware(handler, "SearchTravelHotels")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(SearchOffersResponseObject); ok {
-		if err := validResponse.VisitSearchOffersResponse(w); err != nil {
+	} else if validResponse, ok := response.(SearchTravelHotelsResponseObject); ok {
+		if err := validResponse.VisitSearchTravelHotelsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

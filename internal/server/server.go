@@ -4,18 +4,20 @@ import (
 	"context"
 
 	"github.com/ShuzoShinagawa1102/offenro/internal/api"
-	"github.com/ShuzoShinagawa1102/offenro/internal/merchant"
+	"github.com/ShuzoShinagawa1102/offenro/internal/search"
 )
 
 type Server struct {
-	merchantClient *merchant.Client
+	searchService *search.Service
 }
 
 var _ api.StrictServerInterface = (*Server)(nil)
 
-func New(merchantClient *merchant.Client) *Server {
+func New(
+	searchService *search.Service,
+) *Server {
 	return &Server{
-		merchantClient: merchantClient,
+		searchService: searchService,
 	}
 }
 
@@ -29,36 +31,68 @@ func (s *Server) GetHealth(
 	}, nil
 }
 
-func (s *Server) SearchOffers(
+func (s *Server) SearchTravelHotels(
 	ctx context.Context,
-	request api.SearchOffersRequestObject,
-) (api.SearchOffersResponseObject, error) {
+	request api.SearchTravelHotelsRequestObject,
+) (api.SearchTravelHotelsResponseObject, error) {
 
-	// Merchantへ問い合わせる
-	result, err := s.merchantClient.SearchShoes(
+	body := request.Body
+
+	// Web APIのRequestを
+	// Protocol CoreのTravelHotelConditionへ変換する。
+	condition := search.TravelHotelCondition{
+		Location: body.Location,
+
+		// OpenAPI format: date は
+		// openapi_types.Dateとして生成され、
+		// 内部にtime.Timeを保持している。
+		CheckIn: body.CheckIn.Time,
+
+		CheckOut: body.CheckOut.Time,
+
+		Adults: body.Adults,
+		Rooms:  body.Rooms,
+
+		MaxPrice: body.MaxPrice,
+	}
+
+	// Protocol Coreを呼び出す。
+	offers, err := s.searchService.SearchOffers(
 		ctx,
-		merchant.SearchRequest{
-			Query: request.Body.Query,
-		},
+		search.DomainTravelHotel,
+		condition,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	// Merchant問い合わせ結果をプロトコル用Offerに変換する
-	offers := make([]api.Offer, 0, len(result.Offers))
-	for _, offer := range result.Offers {
-		offers = append(offers, api.Offer{
-			OfferId:    offer.OfferID,
-			MerchantId: "merchant_001",
-			Domain:     request.Body.Domain,
-			Title:      offer.Title,
-			Amount:     offer.Amount,
-			Currency:   offer.Currency,
-		})
+	// Protocol内部Offerから
+	// 外部Web API用Offerへ変換する。
+	apiOffers := make(
+		[]api.Offer,
+		0,
+		len(offers),
+	)
+
+	for _, offer := range offers {
+		apiOffers = append(
+			apiOffers,
+			api.Offer{
+				OfferId:    offer.ID,
+				MerchantId: offer.MerchantID,
+				Domain:     string(offer.Domain),
+				Title:      offer.Title,
+				Amount:     offer.Amount,
+				Currency:   offer.Currency,
+			},
+		)
 	}
 
-	return api.SearchOffers200JSONResponse{
-		Offers: offers,
-	}, nil
+	response := api.SearchOffersResponse{
+		Offers: apiOffers,
+	}
+
+	return api.SearchTravelHotels200JSONResponse(
+		response,
+	), nil
 }
