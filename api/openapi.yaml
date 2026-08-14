@@ -32,10 +32,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SearchOffersResponse"
+                $ref: "#/components/schemas/TravelHotelSearchResponse"
 
 components:
   schemas:
+
     HealthResponse:
       type: object
       required:
@@ -47,15 +48,38 @@ components:
     TravelHotelSearchRequest:
       type: object
       required:
-        - location
+        - destination
+        - stay
+        - guests
+      properties:
+        destination:
+          $ref: "#/components/schemas/TravelHotelDestination"
+
+        stay:
+          $ref: "#/components/schemas/TravelHotelStay"
+
+        guests:
+          $ref: "#/components/schemas/TravelHotelGuests"
+
+        filters:
+          $ref: "#/components/schemas/TravelHotelFilters"
+
+    TravelHotelDestination:
+      type: object
+      required:
+        - prefecture_code
+      properties:
+        prefecture_code:
+          type: string
+          description: Japanese prefecture code
+          example: "14"
+
+    TravelHotelStay:
+      type: object
+      required:
         - check_in
         - check_out
-        - adults
-        - rooms
       properties:
-        location:
-          type: string
-
         check_in:
           type: string
           format: date
@@ -64,6 +88,12 @@ components:
           type: string
           format: date
 
+    TravelHotelGuests:
+      type: object
+      required:
+        - adults
+        - rooms
+      properties:
         adults:
           type: integer
           minimum: 1
@@ -72,12 +102,15 @@ components:
           type: integer
           minimum: 1
 
+    TravelHotelFilters:
+      type: object
+      properties:
         max_price:
           type: integer
           format: int64
           minimum: 0
 
-    SearchOffersResponse:
+    TravelHotelSearchResponse:
       type: object
       required:
         - offers
@@ -85,17 +118,18 @@ components:
         offers:
           type: array
           items:
-            $ref: "#/components/schemas/Offer"
+            $ref: "#/components/schemas/TravelHotelOffer"
 
-    Offer:
+    TravelHotelOffer:
       type: object
       required:
         - offer_id
         - merchant_id
         - domain
-        - title
         - amount
         - currency
+        - hotel
+        - stay
       properties:
         offer_id:
           type: string
@@ -106,12 +140,39 @@ components:
         domain:
           type: string
 
-        title:
-          type: string
-
         amount:
           type: integer
           format: int64
 
         currency:
+          type: string
+
+        hotel:
+          $ref: "#/components/schemas/TravelHotelHotel"
+
+        stay:
+          $ref: "#/components/schemas/TravelHotelStay"
+
+    TravelHotelHotel:
+      type: object
+      required:
+        - hotel_id
+        - name
+        - prefecture_code
+        - prefecture_name
+        - city
+      properties:
+        hotel_id:
+          type: string
+
+        name:
+          type: string
+
+        prefecture_code:
+          type: string
+
+        prefecture_name:
+          type: string
+
+        city:
           type: string

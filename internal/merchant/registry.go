@@ -6,32 +6,39 @@ import (
 	"github.com/ShuzoShinagawa1102/offenro/internal/search"
 )
 
-type InMemoryRegistry struct {
+type InMemoryCapabilityRegistry struct {
 	targets []search.MerchantTarget
 }
 
-func NewInMemoryRegistry(
+func NewInMemoryCapabilityRegistry(
 	targets []search.MerchantTarget,
-) *InMemoryRegistry {
-	return &InMemoryRegistry{
+) *InMemoryCapabilityRegistry {
+
+	return &InMemoryCapabilityRegistry{
 		targets: targets,
 	}
 }
 
-func (r *InMemoryRegistry) FindByDomain(
+func (r *InMemoryCapabilityRegistry) FindByDomain(
 	ctx context.Context,
 	domain search.Domain,
 ) ([]search.MerchantTarget, error) {
 
-	var result []search.MerchantTarget
+	result :=
+		make(
+			[]search.MerchantTarget,
+			0,
+		)
 
 	for _, target := range r.targets {
-		if target.Domain == domain {
-			result = append(
-				result,
-				target,
-			)
+		if target.Domain != domain {
+			continue
 		}
+
+		result = append(
+			result,
+			target,
+		)
 	}
 
 	return result, nil

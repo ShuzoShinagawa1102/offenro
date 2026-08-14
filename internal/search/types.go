@@ -12,20 +12,34 @@ const (
 	DomainTravelHotel Domain = "travel.hotel"
 )
 
-// SearchConditionは、各Domainの検索条件が満たす共通interface。
 type SearchCondition interface {
 	Domain() Domain
 	Validate() error
 }
 
-// TravelHotelConditionはtravel.hotel専用の検索条件。
-type TravelHotelCondition struct {
-	Location string
+type TravelHotelDestination struct {
+	PrefectureCode string
+}
+
+type TravelHotelStay struct {
 	CheckIn  time.Time
 	CheckOut time.Time
-	Adults   int
-	Rooms    int
+}
+
+type TravelHotelGuests struct {
+	Adults int
+	Rooms  int
+}
+
+type TravelHotelFilters struct {
 	MaxPrice *int64
+}
+
+type TravelHotelCondition struct {
+	Destination TravelHotelDestination
+	Stay        TravelHotelStay
+	Guests      TravelHotelGuests
+	Filters     TravelHotelFilters
 }
 
 func (c TravelHotelCondition) Domain() Domain {
@@ -33,56 +47,74 @@ func (c TravelHotelCondition) Domain() Domain {
 }
 
 func (c TravelHotelCondition) Validate() error {
-	if c.Location == "" {
-		return errors.New("location is required")
+	if c.Destination.PrefectureCode == "" {
+		return errors.New("prefecture code is required")
 	}
 
-	if c.CheckIn.IsZero() {
+	if c.Stay.CheckIn.IsZero() {
 		return errors.New("check-in is required")
 	}
 
-	if c.CheckOut.IsZero() {
+	if c.Stay.CheckOut.IsZero() {
 		return errors.New("check-out is required")
 	}
 
-	if !c.CheckOut.After(c.CheckIn) {
+	if !c.Stay.CheckOut.After(c.Stay.CheckIn) {
 		return errors.New("check-out must be after check-in")
 	}
 
-	if c.Adults <= 0 {
+	if c.Guests.Adults <= 0 {
 		return errors.New("adults must be greater than zero")
 	}
 
-	if c.Rooms <= 0 {
+	if c.Guests.Rooms <= 0 {
 		return errors.New("rooms must be greater than zero")
 	}
 
-	if c.MaxPrice != nil && *c.MaxPrice < 0 {
+	if c.Filters.MaxPrice != nil &&
+		*c.Filters.MaxPrice < 0 {
 		return errors.New("max price must not be negative")
 	}
 
 	return nil
 }
 
-// OfferはOffenro内部で扱う共通Offer。
-type Offer struct {
+type Offer interface {
+	GetDomain() Domain
+}
+
+type OfferBase struct {
 	ID         string
 	MerchantID string
 	Domain     Domain
-	Title      string
 	Amount     int64
 	Currency   string
 }
 
-// MerchantTargetは、Offer検索先となるMerchant Capability。
-// TODO: 将来的にはDBの Merchant + MerchantCapability から生成する。
+type TravelHotel struct {
+	HotelID        string
+	Name           string
+	PrefectureCode string
+	PrefectureName string
+	City           string
+}
+
+type TravelHotelOffer struct {
+	Base  OfferBase
+	Hotel TravelHotel
+	Stay  TravelHotelStay
+}
+
+func (o TravelHotelOffer) GetDomain() Domain {
+	return o.Base.Domain
+}
+
 type MerchantTarget struct {
 	MerchantID string
 	Domain     Domain
 	BaseURL    string
 }
 
-// MerchantRegistryは、指定Domainに対応するMerchantを探す役割。
 type MerchantRegistry interface {
 	FindByDomain(
 		ctx context.Context,
@@ -90,7 +122,15 @@ type MerchantRegistry interface {
 	) ([]MerchantTarget, error)
 }
 
-// DomainSearcherは、Domain固有のMerchant APIを呼び出す役割。
+type MerchantDiscovery interface {
+	FindMerchants(
+		ctx context.Context,
+		condition SearchCondition,
+		candidates []MerchantTarget,
+		limit int,
+	) ([]MerchantTarget, error)
+}
+
 type DomainSearcher interface {
 	Search(
 		ctx context.Context,

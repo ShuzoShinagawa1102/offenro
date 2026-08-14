@@ -20,29 +20,62 @@ type HealthResponse struct {
 	Status string `json:"status"`
 }
 
-// Offer defines model for Offer.
-type Offer struct {
-	Amount     int64  `json:"amount"`
-	Currency   string `json:"currency"`
-	Domain     string `json:"domain"`
-	MerchantId string `json:"merchant_id"`
-	OfferId    string `json:"offer_id"`
-	Title      string `json:"title"`
+// TravelHotelDestination defines model for TravelHotelDestination.
+type TravelHotelDestination struct {
+	// PrefectureCode Japanese prefecture code
+	//
+	// Example: 14
+	PrefectureCode string `json:"prefecture_code"`
 }
 
-// SearchOffersResponse defines model for SearchOffersResponse.
-type SearchOffersResponse struct {
-	Offers []Offer `json:"offers"`
+// TravelHotelFilters defines model for TravelHotelFilters.
+type TravelHotelFilters struct {
+	MaxPrice *int64 `json:"max_price,omitempty"`
+}
+
+// TravelHotelGuests defines model for TravelHotelGuests.
+type TravelHotelGuests struct {
+	Adults int `json:"adults"`
+	Rooms  int `json:"rooms"`
+}
+
+// TravelHotelHotel defines model for TravelHotelHotel.
+type TravelHotelHotel struct {
+	City           string `json:"city"`
+	HotelId        string `json:"hotel_id"`
+	Name           string `json:"name"`
+	PrefectureCode string `json:"prefecture_code"`
+	PrefectureName string `json:"prefecture_name"`
+}
+
+// TravelHotelOffer defines model for TravelHotelOffer.
+type TravelHotelOffer struct {
+	Amount     int64            `json:"amount"`
+	Currency   string           `json:"currency"`
+	Domain     string           `json:"domain"`
+	Hotel      TravelHotelHotel `json:"hotel"`
+	MerchantId string           `json:"merchant_id"`
+	OfferId    string           `json:"offer_id"`
+	Stay       TravelHotelStay  `json:"stay"`
 }
 
 // TravelHotelSearchRequest defines model for TravelHotelSearchRequest.
 type TravelHotelSearchRequest struct {
-	Adults   int                `json:"adults"`
+	Destination TravelHotelDestination `json:"destination"`
+	Filters     *TravelHotelFilters    `json:"filters,omitempty"`
+	Guests      TravelHotelGuests      `json:"guests"`
+	Stay        TravelHotelStay        `json:"stay"`
+}
+
+// TravelHotelSearchResponse defines model for TravelHotelSearchResponse.
+type TravelHotelSearchResponse struct {
+	Offers []TravelHotelOffer `json:"offers"`
+}
+
+// TravelHotelStay defines model for TravelHotelStay.
+type TravelHotelStay struct {
 	CheckIn  openapi_types.Date `json:"check_in"`
 	CheckOut openapi_types.Date `json:"check_out"`
-	Location string             `json:"location"`
-	MaxPrice *int64             `json:"max_price,omitempty"`
-	Rooms    int                `json:"rooms"`
 }
 
 // SearchTravelHotelsJSONRequestBody defines body for SearchTravelHotels for application/json ContentType.
@@ -250,7 +283,7 @@ type SearchTravelHotelsResponseObject interface {
 	VisitSearchTravelHotelsResponse(w http.ResponseWriter) error
 }
 
-type SearchTravelHotels200JSONResponse SearchOffersResponse
+type SearchTravelHotels200JSONResponse TravelHotelSearchResponse
 
 func (response SearchTravelHotels200JSONResponse) VisitSearchTravelHotelsResponse(w http.ResponseWriter) error {
 
