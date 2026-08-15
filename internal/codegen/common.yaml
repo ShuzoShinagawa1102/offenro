@@ -1,0 +1,9 @@
+package: common
+
+generate:
+  models: true
+
+output-options:
+  skip-prune: true
+
+output: ../generated/common/openapi.gen.go

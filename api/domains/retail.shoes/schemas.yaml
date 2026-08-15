@@ -1,0 +1,145 @@
+openapi: 3.0.3
+
+info:
+  title: Offenro retail.shoes Schemas
+  version: 0.1.0
+
+paths: {}
+
+components:
+  schemas:
+    RetailShoesCriteria:
+      type: object
+      required:
+        - brand
+        - size
+      properties:
+        brand:
+          type: string
+          example: example-brand
+        size:
+          type: string
+          description: Merchant-defined shoe size notation
+          example: "27.0"
+        category:
+          type: string
+          example: sneakers
+
+    RetailShoesFilters:
+      type: object
+      properties:
+        max_price:
+          $ref: "../../common/schemas.yaml#/components/schemas/Amount"
+
+    RetailShoesSearchRequest:
+      type: object
+      required:
+        - criteria
+        - quantity
+      properties:
+        criteria:
+          $ref: "#/components/schemas/RetailShoesCriteria"
+        quantity:
+          type: integer
+          minimum: 1
+        filters:
+          $ref: "#/components/schemas/RetailShoesFilters"
+
+    RetailShoesProduct:
+      type: object
+      required:
+        - product_id
+        - name
+        - brand
+        - category
+        - size
+        - color
+      properties:
+        product_id:
+          type: string
+        name:
+          type: string
+        brand:
+          type: string
+        category:
+          type: string
+        size:
+          type: string
+        color:
+          type: string
+
+    RetailShoesOffer:
+      type: object
+      required:
+        - offer_id
+        - merchant_id
+        - domain
+        - amount
+        - currency
+        - product
+        - quantity
+      properties:
+        offer_id:
+          type: string
+        merchant_id:
+          type: string
+        domain:
+          type: string
+        amount:
+          $ref: "../../common/schemas.yaml#/components/schemas/Amount"
+        currency:
+          $ref: "../../common/schemas.yaml#/components/schemas/Currency"
+        product:
+          $ref: "#/components/schemas/RetailShoesProduct"
+        quantity:
+          type: integer
+
+    RetailShoesSearchResponse:
+      type: object
+      required:
+        - offers
+      properties:
+        offers:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetailShoesOffer"
+
+    RetailShoesMerchantOffer:
+      type: object
+      required:
+        - offer_id
+        - amount
+        - currency
+        - product
+        - quantity
+      properties:
+        offer_id:
+          type: string
+        amount:
+          $ref: "../../common/schemas.yaml#/components/schemas/Amount"
+        currency:
+          $ref: "../../common/schemas.yaml#/components/schemas/Currency"
+        product:
+          $ref: "#/components/schemas/RetailShoesProduct"
+        quantity:
+          type: integer
+
+    RetailShoesMerchantSearchResponse:
+      type: object
+      required:
+        - offers
+      properties:
+        offers:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetailShoesMerchantOffer"
+
+    RetailShoesCatalogResponse:
+      type: object
+      required:
+        - products
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetailShoesProduct"

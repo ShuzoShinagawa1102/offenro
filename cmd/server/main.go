@@ -2,207 +2,78 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
-	"time"
 
-	"github.com/ShuzoShinagawa1102/offenro/internal/api"
-	"github.com/ShuzoShinagawa1102/offenro/internal/discovery"
-	"github.com/ShuzoShinagawa1102/offenro/internal/merchant"
-	"github.com/ShuzoShinagawa1102/offenro/internal/mockdata"
-	"github.com/ShuzoShinagawa1102/offenro/internal/search"
-	"github.com/ShuzoShinagawa1102/offenro/internal/server"
+	"github.com/ShuzoShinagawa1102/offenro/internal/core/discovery"
+	"github.com/ShuzoShinagawa1102/offenro/internal/core/extension"
+	"github.com/ShuzoShinagawa1102/offenro/internal/core/merchant"
+	"github.com/ShuzoShinagawa1102/offenro/internal/core/search"
+	"github.com/ShuzoShinagawa1102/offenro/internal/domain/retailshoes"
+	"github.com/ShuzoShinagawa1102/offenro/internal/domain/travelhotel"
+	retailshoesapi "github.com/ShuzoShinagawa1102/offenro/internal/platform/agentapi/retailshoes"
+	travelhotelapi "github.com/ShuzoShinagawa1102/offenro/internal/platform/agentapi/travelhotel"
+	"github.com/ShuzoShinagawa1102/offenro/internal/platform/httpclient"
+	"github.com/ShuzoShinagawa1102/offenro/internal/platform/httpserver"
 )
 
-const (
-	merchantSearchLimit = 10
-	offerSearchLimit    = 50
-)
+const serverAddress = ":8080"
 
 func main() {
+	merchantRegistry := merchant.NewInMemoryRegistry(nil)
+	indexRepository := discovery.NewInMemoryIndexRepository()
+	domainRegistry := extension.NewRegistry()
+	merchantHTTPClient := httpclient.New(httpclient.Config{})
 
-	httpClient :=
-		&http.Client{
-			Timeout:
-				5 * time.Second,
+	// 新しいDomainを追加するときは、Domain Extensionをこの一覧へ追加する。
+	domainExtensions := []extension.Extension{
+		travelhotel.New(indexRepository, merchantHTTPClient),
+		retailshoes.New(indexRepository, merchantHTTPClient),
+	}
+	for _, domainExtension := range domainExtensions {
+		if err := domainRegistry.Register(domainExtension); err != nil {
+			slog.Error("register domain extension failed", "error", err)
+			os.Exit(1)
 		}
-
-	// ---------------------------------
-	// Merchant Capability Registry
-	// ---------------------------------
-
-	targets :=
-		make(
-			[]search.MerchantTarget,
-			0,
-			30,
-		)
-
-	for _, master :=
-		range mockdata.MerchantMasters() {
-
-		targets = append(
-			targets,
-			search.MerchantTarget{
-				MerchantID:
-					master.ID,
-
-				Domain:
-					search.DomainTravelHotel,
-
-				BaseURL:
-					fmt.Sprintf(
-						"http://localhost:8081/merchants/%s",
-						master.ID,
-					),
-			},
-		)
 	}
 
-	registry :=
-		merchant.
-			NewInMemoryCapabilityRegistry(
-				targets,
-			)
+	searchService := search.NewService(
+		merchantRegistry,
+		domainRegistry,
+		search.DefaultMerchantLimit,
+		search.DefaultOfferLimit,
+	)
 
-	// ---------------------------------
-	// Discovery Index
-	// ---------------------------------
-
-	indexRepository :=
-		discovery.
-			NewInMemoryIndexRepository()
-
-	catalogClient :=
-		merchant.
-			NewTravelHotelCatalogClient(
-				httpClient,
-			)
-
-	hotelIndexBuilder :=
-		discovery.
-			NewTravelHotelIndexBuilder(
-				catalogClient,
-			)
-
-	indexer :=
-		discovery.NewIndexer(
-			registry,
-			indexRepository,
-			map[search.Domain]discovery.DomainIndexBuilder{
-				search.DomainTravelHotel:
-					hotelIndexBuilder,
-			},
-		)
-
-	// 現在は永続Indexを持たないので、
-	// Server起動時にMerchant Catalogから再構築する。
-	//
-	// 将来的には別プロセス
-	// cmd/discovery-indexer等へ切り出す。
-	if err :=
-		indexer.RebuildDomain(
-			context.Background(),
-			search.DomainTravelHotel,
-		); err != nil {
-
-		slog.Error(
-			"failed to build discovery index",
-			"error", err,
-		)
-
+	indexer := discovery.NewIndexer(
+		merchantRegistry,
+		indexRepository,
+		domainRegistry,
+	)
+	if err := indexer.RebuildAll(context.Background()); err != nil {
+		slog.Error("rebuild discovery indexes failed", "error", err)
 		os.Exit(1)
 	}
 
-	// ---------------------------------
-	// Merchant Discovery
-	// ---------------------------------
+	// 新しいDomainのAgent API Handlerもこの一覧へ追加する。
+	agentAPIs := []httpserver.RouteMounter{
+		travelhotelapi.New(searchService),
+		retailshoesapi.New(searchService),
+	}
 
-	hotelDiscovery :=
-		discovery.
-			NewTravelHotelMerchantDiscovery(
-				indexRepository,
-			)
-
-	// ---------------------------------
-	// Live Search
-	// ---------------------------------
-
-	hotelSearcher :=
-		merchant.
-			NewTravelHotelSearcher(
-				httpClient,
-			)
-
-	searchService :=
-		search.NewService(
-			registry,
-
-			map[search.Domain]search.MerchantDiscovery{
-				search.DomainTravelHotel:
-					hotelDiscovery,
-			},
-
-			map[search.Domain]search.DomainSearcher{
-				search.DomainTravelHotel:
-					hotelSearcher,
-			},
-
-			merchantSearchLimit,
-			offerSearchLimit,
-		)
-
-	// ---------------------------------
-	// Agent Web API
-	// ---------------------------------
-
-	s :=
-		server.New(
-			searchService,
-		)
-
-	strictHandler :=
-		api.NewStrictHandler(
-			s,
-			nil,
-		)
-
-	mux :=
-		http.NewServeMux()
-
-	handler :=
-		api.HandlerFromMux(
-			strictHandler,
-			mux,
-		)
-
-	httpServer :=
-		&http.Server{
-			Addr:    ":8080",
-			Handler: handler,
-		}
+	httpServer := &http.Server{
+		Addr:    serverAddress,
+		Handler: httpserver.New(agentAPIs...),
+	}
 
 	slog.Info(
 		"offenro server started",
-		"addr", ":8080",
-		"merchant_limit",
-		merchantSearchLimit,
-		"offer_limit",
-		offerSearchLimit,
+		"addr", serverAddress,
+		"domains", domainRegistry.Domains(),
 	)
 
-	if err :=
-		httpServer.ListenAndServe();
-		err != nil &&
-			err != http.ErrServerClosed {
-
-		slog.Error(
-			"server failed",
-			"error", err,
-		)
-
+	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		slog.Error("server failed", "error", err)
 		os.Exit(1)
 	}
 }

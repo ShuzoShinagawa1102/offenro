@@ -1,0 +1,24 @@
+openapi: 3.0.3
+
+info:
+  title: Offenro retail.shoes Agent API
+  version: 0.1.0
+
+paths:
+  /v1/retail/shoes/search:
+    post:
+      operationId: searchRetailShoes
+      summary: Search shoe offers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/RetailShoesSearchRequest"
+      responses:
+        "200":
+          description: Shoe offers
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/RetailShoesSearchResponse"

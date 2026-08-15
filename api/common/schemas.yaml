@@ -1,0 +1,42 @@
+openapi: 3.0.3
+
+info:
+  title: Offenro Common API Schemas
+  version: 0.1.0
+
+paths: {}
+
+components:
+  schemas:
+    Amount:
+      type: integer
+      format: int64
+      minimum: 0
+
+    Currency:
+      type: string
+      minLength: 3
+      maxLength: 3
+      example: JPY
+
+    Money:
+      type: object
+      required:
+        - amount
+        - currency
+      properties:
+        amount:
+          $ref: "#/components/schemas/Amount"
+        currency:
+          $ref: "#/components/schemas/Currency"
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string

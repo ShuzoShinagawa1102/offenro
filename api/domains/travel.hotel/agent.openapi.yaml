@@ -1,0 +1,24 @@
+openapi: 3.0.3
+
+info:
+  title: Offenro travel.hotel Agent API
+  version: 0.1.0
+
+paths:
+  /v1/travel/hotels/search:
+    post:
+      operationId: searchTravelHotels
+      summary: Search hotel offers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/TravelHotelSearchRequest"
+      responses:
+        "200":
+          description: Hotel offers
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/TravelHotelSearchResponse"
