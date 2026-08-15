@@ -9,4 +9,4 @@ output-options:
 import-mapping:
   ../../common/schemas.yaml: github.com/ShuzoShinagawa1102/offenro/internal/generated/common
 
-output: ../domain/retailshoes/generated/model/openapi.gen.go
+output: ../../domain/retailshoes/generated/model/openapi.gen.go

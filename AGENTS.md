@@ -92,7 +92,11 @@ internal/platform/agentapi/{domain}/
 コード生成設定もDomain実装から分離する。
 
 ```text
-internal/codegen/
+internal/codegen/{domain}/
+├── generate.go
+├── model.yaml
+├── agent.yaml
+└── merchant.yaml
 ```
 
 APIフィールドを追加・変更するときは、`extension.go`や生成Goコードではなく、`api/domains/{domain}/schemas.yaml`を編集する。
@@ -100,7 +104,7 @@ APIフィールドを追加・変更するときは、`extension.go`や生成Go�
 ## Domain追加手順
 
 1. `api/domains/{domain}/`へSchemas、Agent API、Merchant APIを追加する。
-2. `internal/codegen/`へ生成設定と生成Directiveを追加する。
+2. `internal/codegen/{domain}/`へ生成設定と生成Directiveを追加する。
 3. `model`、`agent`、`merchant`パッケージを生成する。
 4. `extension.go`、`searcher.go`、`discovery.go`、`index_builder.go`を実装する。
 5. `internal/platform/agentapi/{domain}/`へAgent Handler Adapterを追加する。
@@ -159,7 +163,7 @@ domain / dimension / value / merchant_id / supply_count / indexed_at
 go generate ./...
 ```
 
-生成設定は`internal/codegen/`に集約する。出力先は次のとおり。
+生成設定はDomain単位で`internal/codegen/{domain}/`に集約する。各Domainの`generate.go`が自身の`model`、`agent`、`merchant`だけを生成する。出力先は次のとおり。
 
 ```text
 api/common/schemas.yaml

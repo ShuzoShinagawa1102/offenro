@@ -1,11 +1,10 @@
-package: agent
+package: merchant
 
 generate:
   models: true
-  std-http-server: true
-  strict-server: true
+  client: true
 
 import-mapping:
   ./schemas.yaml: github.com/ShuzoShinagawa1102/offenro/internal/domain/travelhotel/generated/model
 
-output: ../domain/travelhotel/generated/agent/openapi.gen.go
+output: ../../domain/travelhotel/generated/merchant/openapi.gen.go

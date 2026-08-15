@@ -6,4 +6,4 @@ generate:
 output-options:
   skip-prune: true
 
-output: ../generated/common/openapi.gen.go
+output: ../../generated/common/openapi.gen.go

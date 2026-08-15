@@ -7,4 +7,4 @@ generate:
 import-mapping:
   ./schemas.yaml: github.com/ShuzoShinagawa1102/offenro/internal/domain/retailshoes/generated/model
 
-output: ../domain/retailshoes/generated/merchant/openapi.gen.go
+output: ../../domain/retailshoes/generated/merchant/openapi.gen.go
