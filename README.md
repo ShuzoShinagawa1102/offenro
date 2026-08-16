@@ -50,6 +50,43 @@ Goコードの静的な問題を検査します。
 go vet ./...
 ```
 
+## ローカルDB
+
+初回のみ環境変数ファイルを作成します。
+
+```bash
+cp .env.example .env
+```
+
+起動：
+
+```bash
+docker compose up -d
+```
+
+マイグレーション：
+
+```bash
+set -a
+source .env
+set +a
+go tool goose -dir db/migrations postgres "$DATABASE_URL" up
+```
+
+状態確認：
+
+```bash
+go tool goose -dir db/migrations postgres "$DATABASE_URL" status
+```
+
+停止：
+
+```bash
+docker compose down
+```
+
+詳細は[DB環境](doc/database-environment.md)と[マイグレーション](doc/migrations.md)を参照してください。
+
 ## Server起動
 
 `travel.hotel`と`retail.shoes`を登録したOffenro Serverを起動します。
