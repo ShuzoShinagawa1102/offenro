@@ -1,8 +1,10 @@
 # Offenro
 
+変更内容ごとの編集場所は[開発マップ](doc/development-map.md)、新しいDomainの追加手順は[Domain開発標準](doc/domain-development.md)を参照してください。
+
 ## コード生成
 
-`api/`配下のOpenAPI定義をもとに、Domainモデル、Agent API Handler、Merchant API Clientを生成します。
+OpenAPI定義とSQL Queryから、APIコードとDBアクセスコードをまとめて生成します。
 
 ```bash
 go generate ./...
@@ -14,6 +16,12 @@ go generate ./...
 api/common/schemas.yaml
 → internal/generated/common/openapi.gen.go
 
+api/protocol/schemas.yaml
+→ internal/generated/protocol/model/openapi.gen.go
+
+api/protocol/commerce.openapi.yaml
+→ internal/generated/protocol/commerce/openapi.gen.go
+
 api/domains/{domain}/schemas.yaml
 → internal/domain/{domain}/generated/model/openapi.gen.go
 
@@ -22,9 +30,24 @@ api/domains/{domain}/agent.openapi.yaml
 
 api/domains/{domain}/merchant.openapi.yaml
 → internal/domain/{domain}/generated/merchant/openapi.gen.go
+
+db/migrations/ + db/queries/*.sql
+→ internal/platform/postgres/generated/
 ```
 
-生成された`openapi.gen.go`は直接編集しません。
+生成された`openapi.gen.go`と`internal/platform/postgres/generated/`は直接編集しません。
+
+DBアクセスコードだけを生成する場合：
+
+```bash
+go tool sqlc generate
+```
+
+SQL Queryを検査する場合：
+
+```bash
+go tool sqlc vet
+```
 
 ## Module整理
 
@@ -92,6 +115,9 @@ docker compose down
 `travel.hotel`と`retail.shoes`を登録したOffenro Serverを起動します。
 
 ```bash
+set -a
+source .env
+set +a
 go run ./cmd/server
 ```
 

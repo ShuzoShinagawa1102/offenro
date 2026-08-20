@@ -7,6 +7,7 @@
 - 適用済みのSQLは変更せず、変更内容を新しいSQLとして追加する
 - 各SQLに`-- +goose Up`と`-- +goose Down`を記述する
 - スキーマ設計は[Database Model](database-model.md)を参照する
+- `db/migrations`をsqlcのSchema入力としても使用する
 
 新規SQLの作成：
 
@@ -37,6 +38,13 @@ go tool goose -dir db/migrations postgres "$env:DATABASE_URL" status
 ```
 
 `up`は未適用分の適用、`down`は1件の取り消し、`status`は適用状態の確認です。
+
+Schema変更後は、`db/queries`のSQLからDBアクセスコードを再生成して検査します。
+
+```bash
+go tool sqlc generate
+go tool sqlc vet
+```
 
 ## 本番での実行
 

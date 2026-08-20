@@ -1,0 +1,168 @@
+openapi: 3.0.3
+
+info:
+  title: Offenro Protocol Schemas
+  version: 0.1.0
+
+paths: {}
+
+components:
+  schemas:
+    CartStatus:
+      type: string
+      enum: [ACTIVE, CHECKED_OUT, ABANDONED, EXPIRED]
+
+    CartItemStatus:
+      type: string
+      enum: [ACTIVE, REMOVED, EXPIRED]
+
+    PurchaseStatus:
+      type: string
+      enum: [CREATED, CONFIRMED, CANCELLED]
+
+    OfferSnapshot:
+      type: object
+      additionalProperties: true
+
+    CreateCartRequest:
+      type: object
+      required: [agent_id, buyer_ref]
+      properties:
+        agent_id:
+          type: string
+        buyer_ref:
+          type: string
+
+    UpdateCartRequest:
+      type: object
+      required: [buyer_ref]
+      properties:
+        buyer_ref:
+          type: string
+
+    AddCartItemRequest:
+      type: object
+      required: [merchant_id, domain, offer_id, offer_snapshot, amount, currency]
+      properties:
+        merchant_id:
+          type: string
+        domain:
+          type: string
+        offer_id:
+          type: string
+        offer_snapshot:
+          $ref: "#/components/schemas/OfferSnapshot"
+        amount:
+          $ref: "../common/schemas.yaml#/components/schemas/Amount"
+        currency:
+          $ref: "../common/schemas.yaml#/components/schemas/Currency"
+        offer_expires_at:
+          type: string
+          format: date-time
+
+    UpdateCartItemRequest:
+      type: object
+      properties:
+        offer_snapshot:
+          $ref: "#/components/schemas/OfferSnapshot"
+        amount:
+          $ref: "../common/schemas.yaml#/components/schemas/Amount"
+        currency:
+          $ref: "../common/schemas.yaml#/components/schemas/Currency"
+        offer_expires_at:
+          type: string
+          format: date-time
+
+    Cart:
+      type: object
+      required: [cart_id, agent_id, buyer_ref, status, items, created_at, updated_at]
+      properties:
+        cart_id:
+          type: string
+        agent_id:
+          type: string
+        buyer_ref:
+          type: string
+        status:
+          $ref: "#/components/schemas/CartStatus"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CartItem"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CartItem:
+      type: object
+      required:
+        [item_id, merchant_id, domain, offer_id, offer_snapshot, amount, currency, status]
+      properties:
+        item_id:
+          type: string
+        merchant_id:
+          type: string
+        domain:
+          type: string
+        offer_id:
+          type: string
+        offer_snapshot:
+          $ref: "#/components/schemas/OfferSnapshot"
+        amount:
+          $ref: "../common/schemas.yaml#/components/schemas/Amount"
+        currency:
+          $ref: "../common/schemas.yaml#/components/schemas/Currency"
+        offer_expires_at:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/CartItemStatus"
+
+    Purchase:
+      type: object
+      required:
+        [purchase_id, cart_id, agent_id, buyer_ref, status, items, total_amount, currency, purchased_at]
+      properties:
+        purchase_id:
+          type: string
+        cart_id:
+          type: string
+        agent_id:
+          type: string
+        buyer_ref:
+          type: string
+        status:
+          $ref: "#/components/schemas/PurchaseStatus"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseItem"
+        total_amount:
+          $ref: "../common/schemas.yaml#/components/schemas/Amount"
+        currency:
+          $ref: "../common/schemas.yaml#/components/schemas/Currency"
+        purchased_at:
+          type: string
+          format: date-time
+
+    PurchaseItem:
+      type: object
+      required: [item_id, merchant_id, domain, offer_id, offer_snapshot, amount, currency]
+      properties:
+        item_id:
+          type: string
+        merchant_id:
+          type: string
+        domain:
+          type: string
+        offer_id:
+          type: string
+        offer_snapshot:
+          $ref: "#/components/schemas/OfferSnapshot"
+        amount:
+          $ref: "../common/schemas.yaml#/components/schemas/Amount"
+        currency:
+          $ref: "../common/schemas.yaml#/components/schemas/Currency"

@@ -88,6 +88,8 @@ erDiagram
         string capability_id FK
         string offer_id
         json offer_snapshot
+        int amount
+        string currency
         datetime offer_expires_at
         string status
     }
@@ -349,6 +351,8 @@ Cartに保存された個別Offer。
 | `capability_id` | Offer提供元Merchant Capability |
 | `offer_id` | Merchant / Protocol上のOffer ID |
 | `offer_snapshot` | Cart追加時点のOffer情報 |
+| `amount` | Checkoutに利用するOffer金額 |
+| `currency` | ISO通貨コード |
 | `offer_expires_at` | Offer有効期限 |
 | `status` | `ACTIVE` / `REMOVED` / `EXPIRED` |
 

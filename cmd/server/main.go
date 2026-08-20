@@ -5,24 +5,40 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/ShuzoShinagawa1102/offenro/internal/core/cart"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/discovery"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/extension"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/merchant"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/search"
 	"github.com/ShuzoShinagawa1102/offenro/internal/domain/retailshoes"
 	"github.com/ShuzoShinagawa1102/offenro/internal/domain/travelhotel"
-	retailshoesapi "github.com/ShuzoShinagawa1102/offenro/internal/platform/agentapi/retailshoes"
-	travelhotelapi "github.com/ShuzoShinagawa1102/offenro/internal/platform/agentapi/travelhotel"
+	retailshoesapi "github.com/ShuzoShinagawa1102/offenro/internal/platform/domainapi/retailshoes"
+	travelhotelapi "github.com/ShuzoShinagawa1102/offenro/internal/platform/domainapi/travelhotel"
 	"github.com/ShuzoShinagawa1102/offenro/internal/platform/httpclient"
 	"github.com/ShuzoShinagawa1102/offenro/internal/platform/httpserver"
+	"github.com/ShuzoShinagawa1102/offenro/internal/platform/postgres"
+	"github.com/ShuzoShinagawa1102/offenro/internal/platform/protocolapi"
 )
 
 const serverAddress = ":8080"
 
 func main() {
-	merchantRegistry := merchant.NewInMemoryRegistry(nil)
-	indexRepository := discovery.NewInMemoryIndexRepository()
+	startupContext, cancelStartup := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelStartup()
+
+	pool, err := postgres.Open(startupContext, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		slog.Error("connect to database failed", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	store := postgres.NewStore(pool)
+	var merchantRegistry merchant.Registry = store
+	var indexRepository discovery.IndexRepository = store
+	var commerceRepository cart.Repository = store
 	domainRegistry := extension.NewRegistry()
 	merchantHTTPClient := httpclient.New(httpclient.Config{})
 
@@ -44,6 +60,7 @@ func main() {
 		search.DefaultMerchantLimit,
 		search.DefaultOfferLimit,
 	)
+	cartService := cart.NewService(commerceRepository)
 
 	indexer := discovery.NewIndexer(
 		merchantRegistry,
@@ -55,15 +72,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 新しいDomainのAgent API Handlerもこの一覧へ追加する。
-	agentAPIs := []httpserver.RouteMounter{
+	// 新しいDomainのDomain API Handlerもこの一覧へ追加する。
+	routeMounters := []httpserver.RouteMounter{
+		protocolapi.New(cartService),
 		travelhotelapi.New(searchService),
 		retailshoesapi.New(searchService),
 	}
 
 	httpServer := &http.Server{
 		Addr:    serverAddress,
-		Handler: httpserver.New(agentAPIs...),
+		Handler: httpserver.New(routeMounters...),
 	}
 
 	slog.Info(

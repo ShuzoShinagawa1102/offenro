@@ -4,6 +4,8 @@
 
 新しいDomainを、Protocol Coreを変更せずに追加するための標準手順を定める。
 
+変更内容から編集場所を探す場合は、先に[開発マップ](development-map.md)を参照する。
+
 依存方向は次に固定する。
 
 ```text
@@ -22,7 +24,7 @@ api/domains/{api-domain}/
 ├── agent.openapi.yaml
 └── merchant.openapi.yaml
 
-internal/codegen/{go-domain}/
+internal/codegen/domains/{go-domain}/
 ├── generate.go
 ├── model.yaml
 ├── agent.yaml
@@ -34,7 +36,7 @@ internal/domain/{go-domain}/
 ├── discovery.go
 └── index_builder.go
 
-internal/platform/agentapi/{go-domain}/
+internal/platform/domainapi/{go-domain}/
 └── handler.go
 
 cmd/server/main.go
@@ -52,9 +54,11 @@ internal/domain/{go-domain}/generated/
 └── merchant/openapi.gen.go
 
 internal/generated/common/openapi.gen.go
+internal/generated/protocol/
+internal/platform/postgres/generated/
 ```
 
-これらはOpenAPIから生成する。変更が必要な場合は、元のOpenAPIまたはCodegen設定を修正して再生成する。
+これらはOpenAPIまたはSQLから生成する。変更が必要な場合は、生成元のOpenAPI、Migration、Query、Codegen設定を修正して再生成する。
 
 ### Domain追加では原則変更しない
 
@@ -63,11 +67,21 @@ internal/core/
 internal/platform/httpclient/
 internal/platform/httpserver/
 api/common/schemas.yaml
+api/protocol/
+internal/platform/protocolapi/
 ```
 
 - `internal/core`はDomain非依存のProtocolロジックである。
 - 共通HTTP実装は、全Domainに影響する技術要件を変更するときだけ編集する。
 - `api/common/schemas.yaml`は、MoneyやError等のDomain横断モデルを追加するときだけ編集する。
+- `api/protocol`と`internal/platform/protocolapi`は、CartやPurchase等のProtocol共通APIを変更するときだけ編集する。
+
+API ContractとHTTP Adapterは同じ分類名で対応させる。
+
+```text
+api/protocol/         → internal/platform/protocolapi/
+api/domains/{domain}/ → internal/platform/domainapi/{go-domain}/
+```
 
 ## モデル生成ルール
 
@@ -109,7 +123,7 @@ Agent向けOfferにだけ必要な`merchant_id`や`domain`は、Merchant向けOf
 既存Domainのフォルダを参考に、次を追加する。
 
 ```text
-internal/codegen/{go-domain}/
+internal/codegen/domains/{go-domain}/
 ├── generate.go
 ├── model.yaml
 ├── agent.yaml
@@ -165,10 +179,10 @@ internal/domain/{go-domain}/
 
 価格や在庫等の動的情報はIndexへ保存しない。
 
-### 4. Agent API Handlerを追加する
+### 4. Domain API Handlerを追加する
 
 ```text
-internal/platform/agentapi/{go-domain}/handler.go
+internal/platform/domainapi/{go-domain}/handler.go
 ```
 
 - Generated Agent Handler Interfaceを実装する。
@@ -186,8 +200,8 @@ domainExtensions := []extension.Extension{
 	// 新Domainを追加
 }
 
-// Agent API Handler
-agentAPIs := []httpserver.RouteMounter{
+// Domain API Handler
+routeMounters := []httpserver.RouteMounter{
 	// 新Domainを追加
 }
 ```
@@ -203,6 +217,7 @@ Domain追加時にCore側へ登録分岐を追加しない。
 - Merchantが未登録でも空のOffer一覧を返せること
 - SearcherがGenerated Merchant Clientを利用していること
 - DiscoveryとIndexBuilderが同じDimension／Value形式を使うこと
+- 複数packageで共有するFake Repositoryは`internal/testutil`を利用すること
 
 ## 既存Domain変更手順
 
@@ -220,10 +235,40 @@ Domain Adapterとテストを更新
 
 既存Domainの通常変更では、Codegen設定や`cmd/server/main.go`を変更しない。
 
+## DB変更手順
+
+DB Schemaの正はMigration SQL、Queryの正は`db/queries`のSQLとする。GoコードへSQLを書かない。
+
+```text
+db/migrations/                         # goose Migration。Schemaの正
+db/queries/                            # sqlc Query。開発者がSQLを記述する
+sqlc.yaml                              # 全Query共通の生成設定
+internal/platform/postgres/generated/ # sqlc生成物。直接編集しない
+internal/platform/postgres/            # Coreとの薄い変換Adapter
+```
+
+DB SchemaまたはQueryを追加・変更するときは、次の手順に固定する。
+
+1. Schema変更がある場合は`db/migrations`へgoose Migrationを追加する。
+2. `db/queries/*.sql`へ`-- name: QueryName :one`等のsqlc Queryを記述する。
+3. `go generate ./...`でDBアクセスコードを生成する。
+4. `internal/platform/postgres`のRepositoryから生成メソッドを呼び、Coreモデルとの変換だけを実装する。
+5. Migration、Query、Repositoryのテストを実行する。
+
+```bash
+go tool goose -dir db/migrations create <変更名> sql
+go generate ./...
+go tool sqlc vet
+go test ./...
+```
+
+`internal/platform/postgres/types.go`は`pgtype`とCore型の変換補助だけに使う。DomainモデルやDB Row構造体を定義せず、第二のSource of Truthにしない。
+
 ## 完了確認
 
 ```bash
 go generate ./...
+go tool sqlc vet
 go mod tidy
 go test ./...
 go vet ./...
@@ -235,3 +280,5 @@ go vet ./...
 - `generated/agent`と`generated/merchant`にDomainモデル構造体が重複していない。
 - `internal/core`に具体的なDomain名やHTTP依存を追加していない。
 - 新Domain追加が、そのDomainの追加とComposition Rootへの登録だけで完結している。
+- SQLをGoコードへ直接記述していない。
+- `internal/platform/postgres/generated`を直接編集していない。

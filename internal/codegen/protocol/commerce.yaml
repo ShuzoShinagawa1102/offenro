@@ -1,0 +1,12 @@
+package: commerce
+
+generate:
+  models: true
+  std-http-server: true
+  strict-server: true
+
+import-mapping:
+  ./schemas.yaml: github.com/ShuzoShinagawa1102/offenro/internal/generated/protocol/model
+  ../common/schemas.yaml: github.com/ShuzoShinagawa1102/offenro/internal/generated/common
+
+output: ../../generated/protocol/commerce/openapi.gen.go

@@ -20,6 +20,7 @@ type Merchant struct {
 
 // MerchantCapability declares that a merchant supports a domain.
 type MerchantCapability struct {
+	ID       string
 	Merchant Merchant
 	Domain   Domain
 }

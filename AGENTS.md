@@ -2,7 +2,7 @@
 
 ## プロジェクト概要
 
-Offenroは、成果報酬型のエージェントコマースを成立させるためのプロトコルである。Agentから構造化された検索条件を受け取り、候補Merchantを選び、Merchant Live APIから最新Offerを取得して統合する。
+Offenroは、成果報酬型のエージェントコマースを成立させるためのプロトコルである。Agentから構造化された検索条件を受け取り、Merchant Live APIから最新Offerを取得して統合し、CartからCheckoutを経てPurchaseを生成する。
 
 現在のPrototypeは、次のDomain Extensionを持つ。
 
@@ -20,7 +20,7 @@ core ← domain ← platform/cmd
 - `internal/core`にはProtocolロジックだけを置く。
 - `internal/core`から`net/http`や具体的なDomainを参照しない。
 - `internal/domain/{domain}`はCoreが定義したInterfaceを実装する。
-- `internal/platform`にはHTTP Server、Agent API Handler、共通HTTP Client等の技術実装を置く。
+- `internal/platform`にはHTTP Server、Domain API Handler、Protocol API Handler、PostgreSQL、共通HTTP Client等の技術実装を置く。
 - `cmd`はComposition RootとしてCore、Domain、Platformを組み立てる。
 - Domain追加のためにSearchOffers、Merchant Registry、Discovery Indexer、Index Repositoryを変更しない。
 - 具体的なDomainを削除しても`internal/core/...`がビルドできる状態を維持する。
@@ -70,6 +70,20 @@ generated/model
 
 `generated/agent`と`generated/merchant`は`generated/model`を参照またはaliasし、Domainモデル構造体を重複生成しない。生成されたGoコードは直接編集しない。
 
+### Protocol共通APIモデル
+
+Cart、Checkout、PurchaseのAPI Contractは次を正とする。
+
+```text
+api/protocol/schemas.yaml
+→ internal/generated/protocol/model/openapi.gen.go
+
+api/protocol/commerce.openapi.yaml
+→ internal/generated/protocol/commerce/openapi.gen.go
+```
+
+生成コードは直接編集しない。
+
 ## 開発者がDomain追加・変更時に触る場所
 
 Domainの主要な手書き実装は、意図的に次の4ファイルへ絞る。
@@ -86,13 +100,13 @@ internal/domain/{domain}/
 HTTP transportはDomain実装から分離する。
 
 ```text
-internal/platform/agentapi/{domain}/
+internal/platform/domainapi/{domain}/
 ```
 
 コード生成設定もDomain実装から分離する。
 
 ```text
-internal/codegen/{domain}/
+internal/codegen/domains/{domain}/
 ├── generate.go
 ├── model.yaml
 ├── agent.yaml
@@ -104,11 +118,11 @@ APIフィールドを追加・変更するときは、`extension.go`や生成Go�
 ## Domain追加手順
 
 1. `api/domains/{domain}/`へSchemas、Agent API、Merchant APIを追加する。
-2. `internal/codegen/{domain}/`へ生成設定と生成Directiveを追加する。
+2. `internal/codegen/domains/{domain}/`へ生成設定と生成Directiveを追加する。
 3. `model`、`agent`、`merchant`パッケージを生成する。
 4. `extension.go`、`searcher.go`、`discovery.go`、`index_builder.go`を実装する。
-5. `internal/platform/agentapi/{domain}/`へAgent Handler Adapterを追加する。
-6. `cmd/server/main.go`でDomain ExtensionとAgent Handlerを登録する。
+5. `internal/platform/domainapi/{domain}/`へDomain API Handler Adapterを追加する。
+6. `cmd/server/main.go`でDomain ExtensionとDomain API Handlerを登録する。
 
 この作業でProtocol Coreの変更が必要になった場合は、Domain固有概念がCoreへ漏れていないかを先に確認する。
 
@@ -155,7 +169,7 @@ domain / dimension / value / merchant_id / supply_count / indexed_at
 
 価格や在庫等の動的情報はIndexへ保存せず、検索時にMerchant Live APIから取得する。
 
-## OpenAPIコード生成
+## コード生成
 
 全Domainを1コマンドで生成する。
 
@@ -163,11 +177,17 @@ domain / dimension / value / merchant_id / supply_count / indexed_at
 go generate ./...
 ```
 
-生成設定はDomain単位で`internal/codegen/{domain}/`に集約する。各Domainの`generate.go`が自身の`model`、`agent`、`merchant`だけを生成する。出力先は次のとおり。
+生成設定はDomain単位で`internal/codegen/domains/{domain}/`に集約する。各Domainの`generate.go`が自身の`model`、`agent`、`merchant`だけを生成する。出力先は次のとおり。
 
 ```text
 api/common/schemas.yaml
 → internal/generated/common/openapi.gen.go
+
+api/protocol/schemas.yaml
+→ internal/generated/protocol/model/openapi.gen.go
+
+api/protocol/commerce.openapi.yaml
+→ internal/generated/protocol/commerce/openapi.gen.go
 
 api/domains/{domain}/schemas.yaml
 → internal/domain/{domain}/generated/model/openapi.gen.go
@@ -181,19 +201,24 @@ api/domains/{domain}/merchant.openapi.yaml
 
 - Agent側はModel、`std-http-server`、`strict-server`を生成する。
 - Merchant側はModelとHTTP Clientを生成する。
+- Protocol共通APIはModel、`std-http-server`、`strict-server`を生成する。
 - 手書きSearcherはGenerated Merchant Clientを使用する。
 - OpenAPI変更と生成コードを同じ変更に含める。
+- `db/migrations`と`db/queries`からsqlcコードも同じコマンドで生成する。
 
 ## ディレクトリ責務
 
 ```text
 api/                 # OpenAPI Contract。外部モデルの正
 cmd/                 # Composition Rootと実行プログラム
+db/migrations/       # Protocol DB Schemaの正
+db/queries/          # sqlc Queryの正
 internal/codegen/    # コード生成Directiveと設定
 internal/core/       # Transport非依存のProtocolロジック
 internal/domain/     # Domain Extension
 internal/generated/  # Domain横断の生成APIモデル
-internal/platform/   # HTTP等の技術Adapter
+internal/platform/   # HTTP、PostgreSQL等の技術Adapter
+internal/testutil/   # 複数packageで共有するテスト専用Fake
 ```
 
 ## Protocol責務外
@@ -210,8 +235,15 @@ OffenroはContract、Merchant接続、Discovery、Offer統合までを責務と�
 ## 技術方針
 
 - HTTP AdapterではGo標準の`net/http`を使用する。
-- 必要になるまでWeb FrameworkやDBを導入しない。
-- PrototypeのMerchant RegistryとDiscovery IndexはInMemoryとする。
+- DB Schemaの正は`db/migrations`とし、Migrationは`goose`で管理する。
+- SQL Queryは`db/queries`へ記述し、`sqlc`で`internal/platform/postgres/generated`へ生成する。
+- PostgreSQL接続には`pgx/v5`の`pgxpool`を使用する。
+- 手書きRepositoryはsqlc生成メソッドとCoreモデルの変換に限定し、SQLをGoコードへ記述しない。
+- `internal/platform/postgres/types.go`は型変換補助に限定し、DomainモデルやDB Row型の第二の正にしない。
+- CoreはRepository Interfaceだけを定義し、PostgreSQLの具体技術へ依存しない。
+- Merchant Registry、Discovery Index、Cart、PurchaseはPostgreSQLへ保存する。
+- InMemory Adapterは`internal/testutil`へ置き、テスト用途に限定する。
+- DB接続情報は`DATABASE_URL`で受け取り、アプリケーション起動時にMigrationを実行しない。
 - Merchant HTTPの共通Timeout設定は`internal/platform/httpclient`へ置く。
 - 自然言語解釈はAgent側の責務とし、Coreには構造化済みConditionを渡す。
 - 必要のない抽象化や機能を先回りして追加しない。
@@ -220,6 +252,7 @@ OffenroはContract、Merchant接続、Discovery、Offer統合までを責務と�
 
 ```bash
 go generate ./...
+go tool sqlc vet
 gofmt -w <changed-go-files>
 go mod tidy
 go test ./...

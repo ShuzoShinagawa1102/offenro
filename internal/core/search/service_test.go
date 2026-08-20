@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ShuzoShinagawa1102/offenro/internal/core/merchant"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/model"
+	"github.com/ShuzoShinagawa1102/offenro/internal/testutil"
 )
 
 type testCondition struct {
@@ -79,7 +79,7 @@ func TestServiceSearchOffersUsesRegisteredDomainComponents(t *testing.T) {
 	}
 	domainSearcher := &testSearcher{domain: domain}
 	service := NewService(
-		merchant.NewInMemoryRegistry(capabilities),
+		testutil.NewMerchantRegistry(capabilities),
 		testDomainRegistry{
 			domain:    domain,
 			searcher:  domainSearcher,
@@ -111,7 +111,7 @@ func TestServiceSearchOffersRejectsInvalidCondition(t *testing.T) {
 	domain := model.Domain("test.product")
 	wantErr := errors.New("invalid test condition")
 	service := NewService(
-		merchant.NewInMemoryRegistry(nil),
+		testutil.NewMerchantRegistry(nil),
 		testDomainRegistry{domain: domain},
 		1,
 		1,

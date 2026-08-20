@@ -1,0 +1,214 @@
+openapi: 3.0.3
+
+info:
+  title: Offenro Protocol Commerce API
+  version: 0.1.0
+
+paths:
+  /v1/carts:
+    post:
+      operationId: createCart
+      summary: Create a cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/CreateCartRequest"
+      responses:
+        "201":
+          description: Cart created
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/Cart"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /v1/carts/{cart_id}:
+    parameters:
+      - $ref: "#/components/parameters/CartID"
+    get:
+      operationId: getCart
+      summary: Get a cart
+      responses:
+        "200":
+          description: Cart
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/Cart"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateCart
+      summary: Update a cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/UpdateCartRequest"
+      responses:
+        "200":
+          description: Cart updated
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/Cart"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: deleteCart
+      summary: Abandon a cart
+      responses:
+        "204":
+          description: Cart abandoned
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/carts/{cart_id}/items:
+    parameters:
+      - $ref: "#/components/parameters/CartID"
+    post:
+      operationId: addCartItem
+      summary: Add an offer to a cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/AddCartItemRequest"
+      responses:
+        "201":
+          description: Cart item added
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/CartItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/carts/{cart_id}/items/{item_id}:
+    parameters:
+      - $ref: "#/components/parameters/CartID"
+      - $ref: "#/components/parameters/ItemID"
+    patch:
+      operationId: updateCartItem
+      summary: Update a cart item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/UpdateCartItemRequest"
+      responses:
+        "200":
+          description: Cart item updated
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/CartItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: deleteCartItem
+      summary: Remove a cart item
+      responses:
+        "204":
+          description: Cart item removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/carts/{cart_id}/checkout:
+    parameters:
+      - $ref: "#/components/parameters/CartID"
+    post:
+      operationId: checkoutCart
+      summary: Checkout a cart and create a purchase
+      responses:
+        "201":
+          description: Purchase created
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/Purchase"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/purchases/{purchase_id}:
+    parameters:
+      - $ref: "#/components/parameters/PurchaseID"
+    get:
+      operationId: getPurchase
+      summary: Get a purchase
+      responses:
+        "200":
+          description: Purchase
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/Purchase"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    CartID:
+      name: cart_id
+      in: path
+      required: true
+      schema:
+        type: string
+    ItemID:
+      name: item_id
+      in: path
+      required: true
+      schema:
+        type: string
+    PurchaseID:
+      name: purchase_id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "../common/schemas.yaml#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "../common/schemas.yaml#/components/schemas/Error"
+    Conflict:
+      description: Resource state conflict
+      content:
+        application/json:
+          schema:
+            $ref: "../common/schemas.yaml#/components/schemas/Error"

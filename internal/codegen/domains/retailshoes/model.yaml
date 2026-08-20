@@ -1,0 +1,12 @@
+package: model
+
+generate:
+  models: true
+
+output-options:
+  skip-prune: true
+
+import-mapping:
+  ../../common/schemas.yaml: github.com/ShuzoShinagawa1102/offenro/internal/generated/common
+
+output: ../../../domain/retailshoes/generated/model/openapi.gen.go
