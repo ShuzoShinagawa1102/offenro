@@ -15,5 +15,15 @@ services:
       timeout: 5s
       retries: 10
 
+  pgweb:
+    image: sosedoff/pgweb:0.17.0
+    environment:
+      PGWEB_DATABASE_URL: postgres://${POSTGRES_USER:-offenro}:${POSTGRES_PASSWORD:-offenro}@postgres:5432/${POSTGRES_DB:-offenro}?sslmode=disable
+    ports:
+      - "${PGWEB_PORT:-8081}:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
