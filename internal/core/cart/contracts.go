@@ -8,7 +8,7 @@ import (
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/model"
 )
 
-type Repository interface {
+type CartStore interface {
 	CreateCart(ctx context.Context, cart model.Cart) error
 	GetCart(ctx context.Context, cartID string) (model.Cart, error)
 	UpdateCart(
@@ -34,7 +34,15 @@ type Repository interface {
 		expectedUpdatedAt time.Time,
 		updatedAt time.Time,
 	) error
+}
+
+type PurchaseReader interface {
 	GetPurchase(ctx context.Context, purchaseID string) (model.Purchase, error)
+}
+
+type Repository interface {
+	CartStore
+	PurchaseReader
 }
 
 type CreateInput struct {
@@ -47,13 +55,10 @@ type UpdateInput struct {
 }
 
 type AddItemInput struct {
-	MerchantID     model.MerchantID
-	Domain         model.Domain
-	OfferID        string
-	OfferSnapshot  json.RawMessage
-	Amount         int64
-	Currency       string
-	OfferExpiresAt *time.Time
+	OfferID       string
+	OfferSnapshot json.RawMessage
+	Amount        int64
+	Currency      string
 }
 
 type UpdateItemInput struct {

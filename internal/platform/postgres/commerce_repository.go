@@ -50,7 +50,8 @@ func (s *Store) GetCart(ctx context.Context, cartID string) (model.Cart, error) 
 		value.Items = append(value.Items, model.CartItem{
 			ID: item.CartItemID, CartID: item.CartID, CapabilityID: item.CapabilityID,
 			MerchantID: model.MerchantID(item.MerchantID), Domain: model.Domain(item.DomainID),
-			OfferID: item.OfferID, OfferSnapshot: item.OfferSnapshot, Amount: item.Amount,
+			OfferID: item.OfferID, MerchantOfferRef: item.MerchantOfferRef,
+			OfferSnapshot: item.OfferSnapshot, Amount: item.Amount,
 			Currency: item.Currency, OfferExpiresAt: timestampPointer(item.OfferExpiresAt),
 			Status: model.CartItemStatus(item.Status),
 		})
@@ -87,9 +88,10 @@ func (s *Store) AddCartItem(
 	}
 	item.CapabilityID, err = queries.CreateCartItem(ctx, postgresdb.CreateCartItemParams{
 		CartItemID: item.ID, CartID: item.CartID, OfferID: item.OfferID,
-		OfferSnapshot: item.OfferSnapshot, OfferExpiresAt: optionalTimestamp(item.OfferExpiresAt),
+		MerchantOfferRef: item.MerchantOfferRef,
+		OfferSnapshot:    item.OfferSnapshot, OfferExpiresAt: optionalTimestamp(item.OfferExpiresAt),
 		Status: string(item.Status), Amount: item.Amount, Currency: item.Currency,
-		MerchantID: string(item.MerchantID), DomainID: item.Domain.String(),
+		CapabilityID: item.CapabilityID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return model.CartItem{}, fmt.Errorf("%w: active merchant capability not found", cart.ErrInvalidInput)
@@ -168,7 +170,8 @@ func (s *Store) Checkout(
 	for _, item := range purchase.Items {
 		if err := queries.CreatePurchaseItem(ctx, postgresdb.CreatePurchaseItemParams{
 			PurchaseItemID: item.ID, PurchaseID: purchase.ID, CapabilityID: item.CapabilityID,
-			OfferID: item.OfferID, OfferSnapshot: item.OfferSnapshot, Amount: item.Amount, Currency: item.Currency,
+			OfferID: item.OfferID, MerchantOfferRef: item.MerchantOfferRef,
+			OfferSnapshot: item.OfferSnapshot, Amount: item.Amount, Currency: item.Currency,
 		}); err != nil {
 			return fmt.Errorf("create purchase item: %w", err)
 		}
@@ -202,7 +205,8 @@ func (s *Store) GetPurchase(ctx context.Context, purchaseID string) (model.Purch
 		value.Items = append(value.Items, model.PurchaseItem{
 			ID: item.PurchaseItemID, PurchaseID: item.PurchaseID, CapabilityID: item.CapabilityID,
 			MerchantID: model.MerchantID(item.MerchantID), Domain: model.Domain(item.DomainID),
-			OfferID: item.OfferID, OfferSnapshot: item.OfferSnapshot, Amount: item.Amount, Currency: item.Currency,
+			OfferID: item.OfferID, MerchantOfferRef: item.MerchantOfferRef,
+			OfferSnapshot: item.OfferSnapshot, Amount: item.Amount, Currency: item.Currency,
 		})
 	}
 	return value, nil

@@ -80,12 +80,11 @@ type AddCartItemRequest struct {
 	Amount externalRef0.Amount `json:"amount"`
 
 	// Currency Example: JPY
-	Currency       externalRef0.Currency `json:"currency"`
-	Domain         string                `json:"domain"`
-	MerchantId     string                `json:"merchant_id"`
-	OfferExpiresAt *time.Time            `json:"offer_expires_at,omitempty"`
-	OfferId        string                `json:"offer_id"`
-	OfferSnapshot  OfferSnapshot         `json:"offer_snapshot"`
+	Currency externalRef0.Currency `json:"currency"`
+
+	// OfferId Opaque Offenro offer identifier returned by a Domain API
+	OfferId       string        `json:"offer_id"`
+	OfferSnapshot OfferSnapshot `json:"offer_snapshot"`
 }
 
 // Cart defines model for Cart.

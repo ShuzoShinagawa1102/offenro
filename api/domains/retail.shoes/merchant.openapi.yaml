@@ -34,3 +34,23 @@ paths:
             application/json:
               schema:
                 $ref: "./schemas.yaml#/components/schemas/RetailShoesMerchantSearchResponse"
+
+  /retail/shoes/offers/revalidate:
+    post:
+      operationId: revalidateRetailShoesOffer
+      summary: Revalidate a shoe offer before checkout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/RetailShoesRevalidateRequest"
+      responses:
+        "200":
+          description: Current offer
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/RetailShoesRevalidateResponse"
+        "404":
+          description: Offer is no longer available

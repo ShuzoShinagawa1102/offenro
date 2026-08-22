@@ -6,9 +6,10 @@ Repositoryは、Coreが必要とするデータ操作を表すinterfaceである
 
 ```text
 internal/core                         # Repositoryの契約（Port）
-├── cart.Repository
+├── cart.CartStore / PurchaseReader
 ├── discovery.IndexRepository
-└── merchant.Registry
+├── merchant.Registry / ManagementRepository
+└── offer.Codec / VerifierRegistry
           │
           ├── internal/platform/postgres # 本番用PostgreSQL Adapter
           └── internal/testutil           # テスト用Memory Adapter
@@ -27,6 +28,8 @@ internal/core                         # Repositoryの契約（Port）
 | Domain検索・Merchant選定 | `internal/domain/{go-domain}` | Domainのテスト | `internal/core` |
 | 新Domain追加 | `api/domains`、`internal/codegen/domains`、`internal/domain` | `internal/platform/domainapi`、`cmd/server/main.go` | 既存Domainの生成物 |
 | Cart・Purchase API | `api/protocol` | `internal/core/cart`、`internal/platform/protocolapi` | `internal/generated/protocol` |
+| Merchant管理API | `api/management` | `internal/core/merchant`、`internal/platform/managementapi` | `internal/generated/management` |
+| Offer ID／再確認 | `api/domains/{api-domain}` | `internal/core/offer`、Domainの`searcher.go`、`internal/platform/offertoken` | Domain生成物 |
 | Coreユースケース | `internal/core/{feature}` | 対応するPlatform Adapterとテスト | Domain生成モデル |
 | DB Schema | `db/migrations` | `db/queries`、PostgreSQL Adapter | sqlc生成物 |
 | SQL Query | `db/queries` | `internal/platform/postgres`の変換処理 | Goコード内のSQL、sqlc生成物 |
@@ -34,7 +37,7 @@ internal/core                         # Repositoryの契約（Port）
 
 ## ファイルを分ける基準
 
-- Coreは`cart`、`search`、`discovery`等のユースケース単位でpackageを分ける。
+- Coreは`cart`、`merchant`、`offer`、`search`、`discovery`等のユースケース・Protocol概念単位でpackageを分ける。
 - Domainの手書き実装は`extension.go`、`searcher.go`、`discovery.go`、`index_builder.go`を基本単位とする。
 - HTTP、PostgreSQL等の技術実装は`internal/platform`へ置く。
 - Unit Testは対象コードと同じpackageの`*_test.go`へ置く。
@@ -50,4 +53,4 @@ go test ./...
 go vet ./...
 ```
 
-Domain追加の詳細は[Domain開発標準](domain-development.md)、DB変更の詳細は[マイグレーション](migrations.md)を参照する。
+Domain追加の詳細は[Domain開発標準](domain-development.md)、Commerce／DB実装は[Commerce／DB開発標準](commerce-development.md)、DB変更の詳細は[マイグレーション](migrations.md)を参照する。

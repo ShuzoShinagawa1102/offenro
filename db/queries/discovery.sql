@@ -4,6 +4,10 @@ USING merchant_capability AS capability
 WHERE entry.capability_id = capability.capability_id
   AND capability.domain_id = $1;
 
+-- name: DeleteDiscoveryIndexByCapability :exec
+DELETE FROM discovery_index_entry
+WHERE capability_id = $1;
+
 -- name: CreateDiscoveryIndexEntry :execrows
 INSERT INTO discovery_index_entry (
     index_entry_id,

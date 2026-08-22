@@ -8,6 +8,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Agent struct {
+	AgentID string
+	Name    string
+	Status  string
+}
+
 type Cart struct {
 	CartID    string
 	AgentID   string
@@ -15,4 +21,17 @@ type Cart struct {
 	Status    string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+}
+
+type CommerceDomain struct {
+	DomainID        string
+	Name            string
+	Status          string
+	ProtocolVersion string
+}
+
+type Merchant struct {
+	MerchantID string
+	Name       string
+	Status     string
 }

@@ -1,0 +1,12 @@
+package: management
+
+generate:
+  models: true
+  std-http-server: true
+  strict-server: true
+
+import-mapping:
+  ./schemas.yaml: github.com/ShuzoShinagawa1102/offenro/internal/generated/management/model
+  ../common/schemas.yaml: github.com/ShuzoShinagawa1102/offenro/internal/generated/common
+
+output: ../../generated/management/api/openapi.gen.go

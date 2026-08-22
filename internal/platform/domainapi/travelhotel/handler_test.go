@@ -21,7 +21,7 @@ func TestAgentAPIIsMounted(t *testing.T) {
 	indexRepository := testutil.NewIndexRepository()
 	domainRegistry := extension.NewRegistry()
 	if err := domainRegistry.Register(
-		domain.New(indexRepository, &http.Client{}),
+		domain.New(indexRepository, &http.Client{}, nil),
 	); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}

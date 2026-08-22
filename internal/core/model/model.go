@@ -12,17 +12,21 @@ func (d Domain) String() string {
 // MerchantID identifies a merchant registered with Offenro.
 type MerchantID string
 
-// Merchant contains the domain-independent connection information for a merchant.
+// Merchant is a merchant registered with Offenro.
 type Merchant struct {
-	ID      MerchantID
-	BaseURL string
+	ID     MerchantID
+	Name   string
+	Status MerchantStatus
 }
 
 // MerchantCapability declares that a merchant supports a domain.
 type MerchantCapability struct {
-	ID       string
-	Merchant Merchant
-	Domain   Domain
+	ID              string
+	Merchant        Merchant
+	Domain          Domain
+	APIBaseURL      string
+	Status          CapabilityStatus
+	ProtocolVersion string
 }
 
 // DiscoveryIndexEntry is the generic representation stored by the Discovery Index.

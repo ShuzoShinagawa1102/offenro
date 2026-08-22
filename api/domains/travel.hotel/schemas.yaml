@@ -96,6 +96,7 @@ components:
         - currency
         - hotel
         - stay
+        - offer_expires_at
       properties:
         offer_id:
           type: string
@@ -111,6 +112,9 @@ components:
           $ref: "#/components/schemas/TravelHotel"
         stay:
           $ref: "#/components/schemas/TravelHotelStay"
+        offer_expires_at:
+          type: string
+          format: date-time
 
     TravelHotelSearchResponse:
       type: object
@@ -125,14 +129,15 @@ components:
     TravelHotelMerchantOffer:
       type: object
       required:
-        - offer_id
+        - merchant_offer_ref
         - amount
         - currency
         - hotel
         - stay
       properties:
-        offer_id:
+        merchant_offer_ref:
           type: string
+          description: Opaque Merchant reference used by Offenro for revalidation
         amount:
           $ref: "../../common/schemas.yaml#/components/schemas/Amount"
         currency:
@@ -141,6 +146,9 @@ components:
           $ref: "#/components/schemas/TravelHotel"
         stay:
           $ref: "#/components/schemas/TravelHotelStay"
+        offer_expires_at:
+          type: string
+          format: date-time
 
     TravelHotelMerchantSearchResponse:
       type: object
@@ -161,3 +169,17 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TravelHotel"
+
+    TravelHotelRevalidateRequest:
+      type: object
+      required: [merchant_offer_ref]
+      properties:
+        merchant_offer_ref:
+          type: string
+
+    TravelHotelRevalidateResponse:
+      type: object
+      required: [offer]
+      properties:
+        offer:
+          $ref: "#/components/schemas/TravelHotelMerchantOffer"

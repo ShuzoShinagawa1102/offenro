@@ -26,6 +26,9 @@ type ItemID = string
 // PurchaseID defines model for PurchaseID.
 type PurchaseID = string
 
+// BadGateway defines model for BadGateway.
+type BadGateway = externalRef0.Error
+
 // BadRequest defines model for BadRequest.
 type BadRequest = externalRef0.Error
 
@@ -460,6 +463,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	return m
 }
 
+type BadGatewayJSONResponse externalRef0.Error
+
 type BadRequestJSONResponse externalRef0.Error
 
 type ConflictJSONResponse externalRef0.Error
@@ -707,6 +712,20 @@ func (response CheckoutCart409JSONResponse) VisitCheckoutCartResponse(w http.Res
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CheckoutCart502JSONResponse struct{ BadGatewayJSONResponse }
+
+func (response CheckoutCart502JSONResponse) VisitCheckoutCartResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
 	_, err := buf.WriteTo(w)
 	return err
 }

@@ -1,0 +1,187 @@
+openapi: 3.0.3
+
+info:
+  title: Offenro Management Schemas
+  version: 0.1.0
+
+paths: {}
+
+components:
+  schemas:
+    MerchantStatus:
+      type: string
+      enum: [PENDING, ACTIVE, SUSPENDED, CLOSED]
+
+    CapabilityStatus:
+      type: string
+      enum: [PENDING_VERIFICATION, ACTIVE, VERIFICATION_FAILED, SUSPENDED]
+
+    DomainStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, DEPRECATED]
+
+    AgentStatus:
+      type: string
+      enum: [PENDING, ACTIVE, SUSPENDED, CLOSED]
+
+    RewardType:
+      type: string
+      enum: [PERCENTAGE, FIXED]
+
+    IncentiveStatus:
+      type: string
+      enum: [DRAFT, ACTIVE, INACTIVE, EXPIRED]
+
+    Merchant:
+      type: object
+      required: [merchant_id, name, status]
+      properties:
+        merchant_id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/MerchantStatus"
+
+    CreateMerchantRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    UpdateMerchantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/MerchantStatus"
+
+    CommerceDomain:
+      type: object
+      required: [domain_id, name, status, protocol_version]
+      properties:
+        domain_id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/DomainStatus"
+        protocol_version:
+          type: string
+
+    MerchantCapability:
+      type: object
+      required:
+        [capability_id, merchant_id, domain_id, api_base_url, status, protocol_version]
+      properties:
+        capability_id:
+          type: string
+        merchant_id:
+          type: string
+        domain_id:
+          type: string
+        api_base_url:
+          type: string
+          format: uri
+        status:
+          $ref: "#/components/schemas/CapabilityStatus"
+        protocol_version:
+          type: string
+
+    CreateMerchantCapabilityRequest:
+      type: object
+      required: [domain_id, api_base_url, protocol_version]
+      properties:
+        domain_id:
+          type: string
+        api_base_url:
+          type: string
+          format: uri
+        protocol_version:
+          type: string
+
+    UpdateMerchantCapabilityRequest:
+      type: object
+      properties:
+        api_base_url:
+          type: string
+          format: uri
+        protocol_version:
+          type: string
+        status:
+          $ref: "#/components/schemas/CapabilityStatus"
+
+    IncentiveRule:
+      type: object
+      required:
+        [incentive_rule_id, capability_id, reward_type, reward_value, valid_from, status]
+      properties:
+        incentive_rule_id:
+          type: string
+        capability_id:
+          type: string
+        reward_type:
+          $ref: "#/components/schemas/RewardType"
+        reward_value:
+          type: string
+          pattern: "^[0-9]+(\\.[0-9]{1,4})?$"
+          example: "5.0000"
+        valid_from:
+          type: string
+          format: date-time
+        valid_to:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/IncentiveStatus"
+
+    CreateIncentiveRuleRequest:
+      type: object
+      required: [reward_type, reward_value]
+      properties:
+        reward_type:
+          $ref: "#/components/schemas/RewardType"
+        reward_value:
+          type: string
+          pattern: "^[0-9]+(\\.[0-9]{1,4})?$"
+        valid_from:
+          type: string
+          format: date-time
+        valid_to:
+          type: string
+          format: date-time
+
+    UpdateIncentiveRuleRequest:
+      type: object
+      properties:
+        reward_value:
+          type: string
+          pattern: "^[0-9]+(\\.[0-9]{1,4})?$"
+        valid_from:
+          type: string
+          format: date-time
+        valid_to:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/IncentiveStatus"
+
+    Agent:
+      type: object
+      required: [agent_id, name, status]
+      properties:
+        agent_id:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/AgentStatus"
+
+    CreateAgentRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string

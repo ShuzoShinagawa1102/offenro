@@ -41,17 +41,18 @@ type Cart struct {
 }
 
 type CartItem struct {
-	ID             string
-	CartID         string
-	CapabilityID   string
-	MerchantID     MerchantID
-	Domain         Domain
-	OfferID        string
-	OfferSnapshot  json.RawMessage
-	Amount         int64
-	Currency       string
-	OfferExpiresAt *time.Time
-	Status         CartItemStatus
+	ID               string
+	CartID           string
+	CapabilityID     string
+	MerchantID       MerchantID
+	Domain           Domain
+	OfferID          string
+	MerchantOfferRef string
+	OfferSnapshot    json.RawMessage
+	Amount           int64
+	Currency         string
+	OfferExpiresAt   *time.Time
+	Status           CartItemStatus
 }
 
 type Purchase struct {
@@ -67,13 +68,14 @@ type Purchase struct {
 }
 
 type PurchaseItem struct {
-	ID            string
-	PurchaseID    string
-	CapabilityID  string
-	MerchantID    MerchantID
-	Domain        Domain
-	OfferID       string
-	OfferSnapshot json.RawMessage
-	Amount        int64
-	Currency      string
+	ID               string
+	PurchaseID       string
+	CapabilityID     string
+	MerchantID       MerchantID
+	Domain           Domain
+	OfferID          string
+	MerchantOfferRef string
+	OfferSnapshot    json.RawMessage
+	Amount           int64
+	Currency         string
 }

@@ -34,3 +34,23 @@ paths:
             application/json:
               schema:
                 $ref: "./schemas.yaml#/components/schemas/TravelHotelMerchantSearchResponse"
+
+  /travel/hotel/offers/revalidate:
+    post:
+      operationId: revalidateTravelHotelOffer
+      summary: Revalidate a hotel offer before checkout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/TravelHotelRevalidateRequest"
+      responses:
+        "200":
+          description: Current offer
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/TravelHotelRevalidateResponse"
+        "404":
+          description: Offer is no longer available

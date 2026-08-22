@@ -31,6 +31,7 @@ SELECT
     capability.merchant_id,
     capability.domain_id,
     item.offer_id,
+    item.merchant_offer_ref,
     item.offer_snapshot,
     item.amount,
     item.currency,
@@ -64,6 +65,7 @@ INSERT INTO cart_item (
     cart_id,
     capability_id,
     offer_id,
+    merchant_offer_ref,
     offer_snapshot,
     offer_expires_at,
     status,
@@ -75,6 +77,7 @@ SELECT
     sqlc.arg(cart_id),
     capability.capability_id,
     sqlc.arg(offer_id),
+    sqlc.arg(merchant_offer_ref),
     sqlc.arg(offer_snapshot),
     sqlc.narg(offer_expires_at),
     sqlc.arg(status),
@@ -83,8 +86,7 @@ SELECT
 FROM merchant_capability AS capability
 JOIN merchant ON merchant.merchant_id = capability.merchant_id
 JOIN commerce_domain AS domain ON domain.domain_id = capability.domain_id
-WHERE capability.merchant_id = sqlc.arg(merchant_id)
-  AND capability.domain_id = sqlc.arg(domain_id)
+WHERE capability.capability_id = sqlc.arg(capability_id)
   AND capability.status = 'ACTIVE'
   AND merchant.status = 'ACTIVE'
   AND domain.status = 'ACTIVE'

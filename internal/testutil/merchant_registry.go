@@ -36,3 +36,18 @@ func (r *MerchantRegistry) FindByDomain(
 
 	return capabilities, nil
 }
+
+func (r *MerchantRegistry) FindByID(
+	ctx context.Context,
+	capabilityID string,
+) (model.MerchantCapability, error) {
+	if err := ctx.Err(); err != nil {
+		return model.MerchantCapability{}, err
+	}
+	for _, capability := range r.capabilities {
+		if capability.ID == capabilityID {
+			return capability, nil
+		}
+	}
+	return model.MerchantCapability{}, merchant.ErrNotFound
+}

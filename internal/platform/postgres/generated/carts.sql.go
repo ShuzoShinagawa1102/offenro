@@ -62,6 +62,7 @@ INSERT INTO cart_item (
     cart_id,
     capability_id,
     offer_id,
+    merchant_offer_ref,
     offer_snapshot,
     offer_expires_at,
     status,
@@ -77,12 +78,12 @@ SELECT
     $5,
     $6,
     $7,
-    $8
+    $8,
+    $9
 FROM merchant_capability AS capability
 JOIN merchant ON merchant.merchant_id = capability.merchant_id
 JOIN commerce_domain AS domain ON domain.domain_id = capability.domain_id
-WHERE capability.merchant_id = $9
-  AND capability.domain_id = $10
+WHERE capability.capability_id = $10
   AND capability.status = 'ACTIVE'
   AND merchant.status = 'ACTIVE'
   AND domain.status = 'ACTIVE'
@@ -90,16 +91,16 @@ RETURNING capability_id
 `
 
 type CreateCartItemParams struct {
-	CartItemID     string
-	CartID         string
-	OfferID        string
-	OfferSnapshot  []byte
-	OfferExpiresAt pgtype.Timestamptz
-	Status         string
-	Amount         int64
-	Currency       string
-	MerchantID     string
-	DomainID       string
+	CartItemID       string
+	CartID           string
+	OfferID          string
+	MerchantOfferRef string
+	OfferSnapshot    []byte
+	OfferExpiresAt   pgtype.Timestamptz
+	Status           string
+	Amount           int64
+	Currency         string
+	CapabilityID     string
 }
 
 func (q *Queries) CreateCartItem(ctx context.Context, arg CreateCartItemParams) (string, error) {
@@ -107,13 +108,13 @@ func (q *Queries) CreateCartItem(ctx context.Context, arg CreateCartItemParams) 
 		arg.CartItemID,
 		arg.CartID,
 		arg.OfferID,
+		arg.MerchantOfferRef,
 		arg.OfferSnapshot,
 		arg.OfferExpiresAt,
 		arg.Status,
 		arg.Amount,
 		arg.Currency,
-		arg.MerchantID,
-		arg.DomainID,
+		arg.CapabilityID,
 	)
 	var capability_id string
 	err := row.Scan(&capability_id)
@@ -148,6 +149,7 @@ SELECT
     capability.merchant_id,
     capability.domain_id,
     item.offer_id,
+    item.merchant_offer_ref,
     item.offer_snapshot,
     item.amount,
     item.currency,
@@ -161,17 +163,18 @@ ORDER BY item.cart_item_id
 `
 
 type ListCartItemsRow struct {
-	CartItemID     string
-	CartID         string
-	CapabilityID   string
-	MerchantID     string
-	DomainID       string
-	OfferID        string
-	OfferSnapshot  []byte
-	Amount         int64
-	Currency       string
-	OfferExpiresAt pgtype.Timestamptz
-	Status         string
+	CartItemID       string
+	CartID           string
+	CapabilityID     string
+	MerchantID       string
+	DomainID         string
+	OfferID          string
+	MerchantOfferRef string
+	OfferSnapshot    []byte
+	Amount           int64
+	Currency         string
+	OfferExpiresAt   pgtype.Timestamptz
+	Status           string
 }
 
 func (q *Queries) ListCartItems(ctx context.Context, cartID string) ([]ListCartItemsRow, error) {
@@ -190,6 +193,7 @@ func (q *Queries) ListCartItems(ctx context.Context, cartID string) ([]ListCartI
 			&i.MerchantID,
 			&i.DomainID,
 			&i.OfferID,
+			&i.MerchantOfferRef,
 			&i.OfferSnapshot,
 			&i.Amount,
 			&i.Currency,

@@ -1,12 +1,14 @@
 package extension
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"sync"
 
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/discovery"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/model"
+	"github.com/ShuzoShinagawa1102/offenro/internal/core/offer"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/search"
 )
 
@@ -16,6 +18,7 @@ type Extension interface {
 	Searcher() search.DomainSearcher
 	MerchantDiscovery() search.MerchantDiscovery
 	IndexBuilder() discovery.DomainIndexBuilder
+	OfferVerifier() offer.Verifier
 }
 
 type Registry struct {
@@ -47,6 +50,9 @@ func (r *Registry) Register(extension Extension) error {
 	}
 	if extension.IndexBuilder().Domain() != domain {
 		return fmt.Errorf("domain extension %s has a mismatched index builder", domain)
+	}
+	if extension.OfferVerifier() == nil || extension.OfferVerifier().Domain() != domain {
+		return fmt.Errorf("domain extension %s has a missing or mismatched offer verifier", domain)
 	}
 
 	r.mu.Lock()
@@ -97,6 +103,25 @@ func (r *Registry) IndexBuilder(domain model.Domain) (discovery.DomainIndexBuild
 		return nil, false
 	}
 	return extension.IndexBuilder(), true
+}
+
+func (r *Registry) OfferVerifier(domain model.Domain) (offer.Verifier, bool) {
+	extension, ok := r.find(domain)
+	if !ok {
+		return nil, false
+	}
+	return extension.OfferVerifier(), true
+}
+
+func (r *Registry) BuildCapabilityIndex(
+	ctx context.Context,
+	capability model.MerchantCapability,
+) ([]model.DiscoveryIndexEntry, error) {
+	builder, ok := r.IndexBuilder(capability.Domain)
+	if !ok {
+		return nil, fmt.Errorf("index builder not found for domain: %s", capability.Domain)
+	}
+	return builder.Build(ctx, capability)
 }
 
 func (r *Registry) find(domain model.Domain) (Extension, bool) {

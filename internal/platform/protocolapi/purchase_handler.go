@@ -20,6 +20,8 @@ func (h *Handler) CheckoutCart(ctx context.Context, request commerceapi.Checkout
 			return commerceapi.CheckoutCart404JSONResponse{NotFoundJSONResponse: commerceapi.NotFoundJSONResponse(apiError(err))}, nil
 		case errors.Is(err, cart.ErrConflict):
 			return commerceapi.CheckoutCart409JSONResponse{ConflictJSONResponse: commerceapi.ConflictJSONResponse(apiError(err))}, nil
+		case errors.Is(err, cart.ErrRevalidation):
+			return commerceapi.CheckoutCart502JSONResponse{BadGatewayJSONResponse: commerceapi.BadGatewayJSONResponse(apiError(err))}, nil
 		default:
 			return nil, err
 		}

@@ -65,6 +65,7 @@ INSERT INTO purchase_item (
     purchase_id,
     capability_id,
     offer_id,
+    merchant_offer_ref,
     offer_snapshot,
     amount,
     currency
@@ -75,19 +76,21 @@ VALUES (
     $3,
     $4,
     $5,
-    $6::BIGINT,
-    $7
+    $6,
+    $7::BIGINT,
+    $8
 )
 `
 
 type CreatePurchaseItemParams struct {
-	PurchaseItemID string
-	PurchaseID     string
-	CapabilityID   string
-	OfferID        string
-	OfferSnapshot  []byte
-	Amount         int64
-	Currency       string
+	PurchaseItemID   string
+	PurchaseID       string
+	CapabilityID     string
+	OfferID          string
+	MerchantOfferRef string
+	OfferSnapshot    []byte
+	Amount           int64
+	Currency         string
 }
 
 func (q *Queries) CreatePurchaseItem(ctx context.Context, arg CreatePurchaseItemParams) error {
@@ -96,6 +99,7 @@ func (q *Queries) CreatePurchaseItem(ctx context.Context, arg CreatePurchaseItem
 		arg.PurchaseID,
 		arg.CapabilityID,
 		arg.OfferID,
+		arg.MerchantOfferRef,
 		arg.OfferSnapshot,
 		arg.Amount,
 		arg.Currency,
@@ -152,6 +156,7 @@ SELECT
     capability.merchant_id,
     capability.domain_id,
     item.offer_id,
+    item.merchant_offer_ref,
     item.offer_snapshot,
     item.amount::BIGINT AS amount,
     item.currency
@@ -163,15 +168,16 @@ ORDER BY item.purchase_item_id
 `
 
 type ListPurchaseItemsRow struct {
-	PurchaseItemID string
-	PurchaseID     string
-	CapabilityID   string
-	MerchantID     string
-	DomainID       string
-	OfferID        string
-	OfferSnapshot  []byte
-	Amount         int64
-	Currency       string
+	PurchaseItemID   string
+	PurchaseID       string
+	CapabilityID     string
+	MerchantID       string
+	DomainID         string
+	OfferID          string
+	MerchantOfferRef string
+	OfferSnapshot    []byte
+	Amount           int64
+	Currency         string
 }
 
 func (q *Queries) ListPurchaseItems(ctx context.Context, purchaseID string) ([]ListPurchaseItemsRow, error) {
@@ -190,6 +196,7 @@ func (q *Queries) ListPurchaseItems(ctx context.Context, purchaseID string) ([]L
 			&i.MerchantID,
 			&i.DomainID,
 			&i.OfferID,
+			&i.MerchantOfferRef,
 			&i.OfferSnapshot,
 			&i.Amount,
 			&i.Currency,

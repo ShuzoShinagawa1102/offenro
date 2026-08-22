@@ -16,6 +16,9 @@ import (
 	externalRef0 "github.com/ShuzoShinagawa1102/offenro/internal/domain/travelhotel/generated/model"
 )
 
+// RevalidateTravelHotelOfferJSONRequestBody defines body for RevalidateTravelHotelOffer for application/json ContentType.
+type RevalidateTravelHotelOfferJSONRequestBody = externalRef0.TravelHotelRevalidateRequest
+
 // SearchTravelHotelOffersJSONRequestBody defines body for SearchTravelHotelOffers for application/json ContentType.
 type SearchTravelHotelOffersJSONRequestBody = externalRef0.TravelHotelSearchRequest
 
@@ -98,6 +101,20 @@ type ClientInterface interface {
 	// Corresponds with GET /travel/hotel/catalog (the `GetTravelHotelCatalog` operationId).
 	GetTravelHotelCatalog(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RevalidateTravelHotelOfferWithBody Revalidate a hotel offer before checkout
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /travel/hotel/offers/revalidate (the `RevalidateTravelHotelOffer` operationId).
+	RevalidateTravelHotelOfferWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RevalidateTravelHotelOffer Revalidate a hotel offer before checkout
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /travel/hotel/offers/revalidate (the `RevalidateTravelHotelOffer` operationId).
+	RevalidateTravelHotelOffer(ctx context.Context, body RevalidateTravelHotelOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SearchTravelHotelOffersWithBody Search current hotel offers
 	//
 	// Takes any type of body and a specified content type.
@@ -118,6 +135,40 @@ type ClientInterface interface {
 // Corresponds with GET /travel/hotel/catalog (the `GetTravelHotelCatalog` operationId).
 func (c *Client) GetTravelHotelCatalog(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTravelHotelCatalogRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RevalidateTravelHotelOfferWithBody Revalidate a hotel offer before checkout
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /travel/hotel/offers/revalidate (the `RevalidateTravelHotelOffer` operationId).
+func (c *Client) RevalidateTravelHotelOfferWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevalidateTravelHotelOfferRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RevalidateTravelHotelOffer Revalidate a hotel offer before checkout
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /travel/hotel/offers/revalidate (the `RevalidateTravelHotelOffer` operationId).
+func (c *Client) RevalidateTravelHotelOffer(ctx context.Context, body RevalidateTravelHotelOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevalidateTravelHotelOfferRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +236,46 @@ func NewGetTravelHotelCatalogRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewRevalidateTravelHotelOfferRequest calls the generic RevalidateTravelHotelOffer builder with application/json body
+func NewRevalidateTravelHotelOfferRequest(server string, body RevalidateTravelHotelOfferJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRevalidateTravelHotelOfferRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewRevalidateTravelHotelOfferRequestWithBody constructs an http.Request for the RevalidateTravelHotelOffer method, with any body, and a specified content type
+func NewRevalidateTravelHotelOfferRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/travel/hotel/offers/revalidate")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -280,6 +371,20 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /travel/hotel/catalog (the `GetTravelHotelCatalog` operationId).
 	GetTravelHotelCatalogWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetTravelHotelCatalogResponse, error)
 
+	// RevalidateTravelHotelOfferWithBodyWithResponse Revalidate a hotel offer before checkout
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /travel/hotel/offers/revalidate (the `RevalidateTravelHotelOffer` operationId).
+	RevalidateTravelHotelOfferWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RevalidateTravelHotelOfferResponse, error)
+
+	// RevalidateTravelHotelOfferWithResponse Revalidate a hotel offer before checkout
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /travel/hotel/offers/revalidate (the `RevalidateTravelHotelOffer` operationId).
+	RevalidateTravelHotelOfferWithResponse(ctx context.Context, body RevalidateTravelHotelOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*RevalidateTravelHotelOfferResponse, error)
+
 	// SearchTravelHotelOffersWithBodyWithResponse Search current hotel offers
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -330,6 +435,47 @@ func (r GetTravelHotelCatalogResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetTravelHotelCatalogResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RevalidateTravelHotelOfferResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *externalRef0.TravelHotelRevalidateResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RevalidateTravelHotelOfferResponse) GetJSON200() *externalRef0.TravelHotelRevalidateResponse {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r RevalidateTravelHotelOfferResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RevalidateTravelHotelOfferResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RevalidateTravelHotelOfferResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RevalidateTravelHotelOfferResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -390,6 +536,32 @@ func (c *ClientWithResponses) GetTravelHotelCatalogWithResponse(ctx context.Cont
 	return ParseGetTravelHotelCatalogResponse(rsp)
 }
 
+// RevalidateTravelHotelOfferWithBodyWithResponse Revalidate a hotel offer before checkout
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /travel/hotel/offers/revalidate (the `RevalidateTravelHotelOffer` operationId).
+func (c *ClientWithResponses) RevalidateTravelHotelOfferWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RevalidateTravelHotelOfferResponse, error) {
+	rsp, err := c.RevalidateTravelHotelOfferWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevalidateTravelHotelOfferResponse(rsp)
+}
+
+// RevalidateTravelHotelOfferWithResponse Revalidate a hotel offer before checkout
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /travel/hotel/offers/revalidate (the `RevalidateTravelHotelOffer` operationId).
+func (c *ClientWithResponses) RevalidateTravelHotelOfferWithResponse(ctx context.Context, body RevalidateTravelHotelOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*RevalidateTravelHotelOfferResponse, error) {
+	rsp, err := c.RevalidateTravelHotelOffer(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevalidateTravelHotelOfferResponse(rsp)
+}
+
 // SearchTravelHotelOffersWithBodyWithResponse Search current hotel offers
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -436,6 +608,35 @@ func ParseGetTravelHotelCatalogResponse(rsp *http.Response) (*GetTravelHotelCata
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRevalidateTravelHotelOfferResponse parses an HTTP response from a RevalidateTravelHotelOfferWithResponse call
+func ParseRevalidateTravelHotelOfferResponse(rsp *http.Response) (*RevalidateTravelHotelOfferResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RevalidateTravelHotelOfferResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.TravelHotelRevalidateResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
 
 	}
 

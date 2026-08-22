@@ -1,0 +1,330 @@
+openapi: 3.0.3
+
+info:
+  title: Offenro Management API
+  version: 0.1.0
+
+security:
+  - managementBearer: []
+
+paths:
+  /v1/management/merchants:
+    post:
+      operationId: createMerchant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/CreateMerchantRequest"
+      responses:
+        "201":
+          description: Merchant created
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/Merchant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /v1/management/merchants/{merchant_id}:
+    parameters:
+      - $ref: "#/components/parameters/MerchantID"
+    get:
+      operationId: getMerchant
+      responses:
+        "200":
+          description: Merchant
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/Merchant"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateMerchant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/UpdateMerchantRequest"
+      responses:
+        "200":
+          description: Merchant updated
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/Merchant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/management/commerce-domains:
+    get:
+      operationId: listCommerceDomains
+      responses:
+        "200":
+          description: Commerce domains
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "./schemas.yaml#/components/schemas/CommerceDomain"
+
+  /v1/management/merchants/{merchant_id}/capabilities:
+    parameters:
+      - $ref: "#/components/parameters/MerchantID"
+    post:
+      operationId: createMerchantCapability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/CreateMerchantCapabilityRequest"
+      responses:
+        "201":
+          description: Capability created
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/MerchantCapability"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      operationId: listMerchantCapabilities
+      responses:
+        "200":
+          description: Merchant capabilities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "./schemas.yaml#/components/schemas/MerchantCapability"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/management/capabilities/{capability_id}:
+    parameters:
+      - $ref: "#/components/parameters/CapabilityID"
+    get:
+      operationId: getMerchantCapability
+      responses:
+        "200":
+          description: Capability
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/MerchantCapability"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateMerchantCapability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/UpdateMerchantCapabilityRequest"
+      responses:
+        "200":
+          description: Capability updated
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/MerchantCapability"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/management/capabilities/{capability_id}/verify:
+    parameters:
+      - $ref: "#/components/parameters/CapabilityID"
+    post:
+      operationId: verifyMerchantCapability
+      responses:
+        "200":
+          description: Capability verified and activated
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/MerchantCapability"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "502":
+          description: Merchant Live API verification failed
+          content:
+            application/json:
+              schema:
+                $ref: "../common/schemas.yaml#/components/schemas/Error"
+
+  /v1/management/capabilities/{capability_id}/incentive-rules:
+    parameters:
+      - $ref: "#/components/parameters/CapabilityID"
+    post:
+      operationId: createIncentiveRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/CreateIncentiveRuleRequest"
+      responses:
+        "201":
+          description: Incentive rule created
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/IncentiveRule"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    get:
+      operationId: listIncentiveRules
+      responses:
+        "200":
+          description: Incentive rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "./schemas.yaml#/components/schemas/IncentiveRule"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/management/incentive-rules/{incentive_rule_id}:
+    parameters:
+      - $ref: "#/components/parameters/IncentiveRuleID"
+    get:
+      operationId: getIncentiveRule
+      responses:
+        "200":
+          description: Incentive rule
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/IncentiveRule"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateIncentiveRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/UpdateIncentiveRuleRequest"
+      responses:
+        "200":
+          description: Incentive rule updated
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/IncentiveRule"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/management/agents:
+    post:
+      operationId: createAgent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/CreateAgentRequest"
+      responses:
+        "201":
+          description: Agent created
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/Agent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /v1/management/agents/{agent_id}:
+    parameters:
+      - $ref: "#/components/parameters/AgentID"
+    get:
+      operationId: getAgent
+      responses:
+        "200":
+          description: Agent
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/Agent"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    managementBearer:
+      type: http
+      scheme: bearer
+
+  parameters:
+    MerchantID:
+      name: merchant_id
+      in: path
+      required: true
+      schema:
+        type: string
+    CapabilityID:
+      name: capability_id
+      in: path
+      required: true
+      schema:
+        type: string
+    IncentiveRuleID:
+      name: incentive_rule_id
+      in: path
+      required: true
+      schema:
+        type: string
+    AgentID:
+      name: agent_id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "../common/schemas.yaml#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "../common/schemas.yaml#/components/schemas/Error"
+    Conflict:
+      description: Resource state conflict
+      content:
+        application/json:
+          schema:
+            $ref: "../common/schemas.yaml#/components/schemas/Error"

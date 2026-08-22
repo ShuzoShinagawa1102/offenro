@@ -1,6 +1,6 @@
 # Offenro
 
-変更内容ごとの編集場所は[開発マップ](doc/development-map.md)、新しいDomainの追加手順は[Domain開発標準](doc/domain-development.md)を参照してください。
+変更内容ごとの編集場所は[開発マップ](doc/development-map.md)、新しいDomainの追加手順は[Domain開発標準](doc/domain-development.md)、Commerce／DB実装は[Commerce／DB開発標準](doc/commerce-development.md)を参照してください。
 
 ## コード生成
 
@@ -21,6 +21,9 @@ api/protocol/schemas.yaml
 
 api/protocol/commerce.openapi.yaml
 → internal/generated/protocol/commerce/openapi.gen.go
+
+api/management/schemas.yaml + management.openapi.yaml
+→ internal/generated/management/
 
 api/domains/{domain}/schemas.yaml
 → internal/domain/{domain}/generated/model/openapi.gen.go
@@ -65,6 +68,12 @@ go mod tidy
 go test ./...
 ```
 
+PostgreSQLを使う購入フロー統合テスト：
+
+```bash
+OFFENRO_INTEGRATION_DATABASE_URL="$DATABASE_URL" go test -v ./test/integration
+```
+
 ## 静的検査
 
 Goコードの静的な問題を検査します。
@@ -86,6 +95,8 @@ cp .env.example .env
 ```bash
 docker compose up -d
 ```
+
+pgweb：`http://localhost:8081`
 
 マイグレーション：
 
@@ -122,6 +133,8 @@ go run ./cmd/server
 ```
 
 起動先は`http://localhost:8080`です。
+
+起動には`.env.example`に記載した`DATABASE_URL`、`MANAGEMENT_API_TOKEN`、32文字以上の`OFFER_TOKEN_SECRET`が必要です。
 
 ## Health Check
 

@@ -162,8 +162,12 @@ internal/domain/{go-domain}/
 - ConditionをMerchant Requestへ渡す。
 - Merchant OfferをAgent向けOfferへ変換する。
 - `merchant_id`と`domain`をOffenro側で付与する。
+- Merchantの`merchant_offer_ref`をOffenroのOpaqueな`offer_id`で包む。
+- Checkout時はGenerated Merchant ClientのRevalidate APIでOfferを再確認する。
 
 手書きでHTTP RequestやJSONモデルを再実装しない。
+
+Merchant向けOfferには`merchant_offer_ref`、Agent向けOfferには`offer_id`を定義する。同じ値を流用したり、文字列連結でMerchant参照値をAgentへ露出したりしない。
 
 #### discovery.go
 
@@ -206,6 +210,8 @@ routeMounters := []httpserver.RouteMounter{
 }
 ```
 
+`New`には共通のOffer ID Issuerも渡す。暗号化方式はDomain側へ実装せず、`internal/core/offer`のInterfaceだけに依存する。
+
 Domain追加時にCore側へ登録分岐を追加しない。
 
 ### 6. テストを追加する
@@ -216,6 +222,8 @@ Domain追加時にCore側へ登録分岐を追加しない。
 - Agent APIが共通HTTP ServerへMountされること
 - Merchantが未登録でも空のOffer一覧を返せること
 - SearcherがGenerated Merchant Clientを利用していること
+- Agent向け`offer_id`へ`merchant_offer_ref`が露出しないこと
+- Merchant Revalidateが`merchant_offer_ref`で呼ばれること
 - DiscoveryとIndexBuilderが同じDimension／Value形式を使うこと
 - 複数packageで共有するFake Repositoryは`internal/testutil`を利用すること
 

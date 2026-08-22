@@ -4,6 +4,8 @@
 package model
 
 import (
+	"time"
+
 	externalRef0 "github.com/ShuzoShinagawa1102/offenro/internal/generated/common"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -48,8 +50,11 @@ type TravelHotelMerchantOffer struct {
 	// Currency Example: JPY
 	Currency externalRef0.Currency `json:"currency"`
 	Hotel    TravelHotel           `json:"hotel"`
-	OfferId  string                `json:"offer_id"`
-	Stay     TravelHotelStay       `json:"stay"`
+
+	// MerchantOfferRef Opaque Merchant reference used by Offenro for revalidation
+	MerchantOfferRef string          `json:"merchant_offer_ref"`
+	OfferExpiresAt   *time.Time      `json:"offer_expires_at,omitempty"`
+	Stay             TravelHotelStay `json:"stay"`
 }
 
 // TravelHotelMerchantSearchResponse defines model for TravelHotelMerchantSearchResponse.
@@ -62,12 +67,23 @@ type TravelHotelOffer struct {
 	Amount externalRef0.Amount `json:"amount"`
 
 	// Currency Example: JPY
-	Currency   externalRef0.Currency `json:"currency"`
-	Domain     string                `json:"domain"`
-	Hotel      TravelHotel           `json:"hotel"`
-	MerchantId string                `json:"merchant_id"`
-	OfferId    string                `json:"offer_id"`
-	Stay       TravelHotelStay       `json:"stay"`
+	Currency       externalRef0.Currency `json:"currency"`
+	Domain         string                `json:"domain"`
+	Hotel          TravelHotel           `json:"hotel"`
+	MerchantId     string                `json:"merchant_id"`
+	OfferExpiresAt time.Time             `json:"offer_expires_at"`
+	OfferId        string                `json:"offer_id"`
+	Stay           TravelHotelStay       `json:"stay"`
+}
+
+// TravelHotelRevalidateRequest defines model for TravelHotelRevalidateRequest.
+type TravelHotelRevalidateRequest struct {
+	MerchantOfferRef string `json:"merchant_offer_ref"`
+}
+
+// TravelHotelRevalidateResponse defines model for TravelHotelRevalidateResponse.
+type TravelHotelRevalidateResponse struct {
+	Offer TravelHotelMerchantOffer `json:"offer"`
 }
 
 // TravelHotelSearchRequest defines model for TravelHotelSearchRequest.

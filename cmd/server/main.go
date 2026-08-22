@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/cart"
@@ -18,6 +19,8 @@ import (
 	travelhotelapi "github.com/ShuzoShinagawa1102/offenro/internal/platform/domainapi/travelhotel"
 	"github.com/ShuzoShinagawa1102/offenro/internal/platform/httpclient"
 	"github.com/ShuzoShinagawa1102/offenro/internal/platform/httpserver"
+	"github.com/ShuzoShinagawa1102/offenro/internal/platform/managementapi"
+	"github.com/ShuzoShinagawa1102/offenro/internal/platform/offertoken"
 	"github.com/ShuzoShinagawa1102/offenro/internal/platform/postgres"
 	"github.com/ShuzoShinagawa1102/offenro/internal/platform/protocolapi"
 )
@@ -38,14 +41,25 @@ func main() {
 	store := postgres.NewStore(pool)
 	var merchantRegistry merchant.Registry = store
 	var indexRepository discovery.IndexRepository = store
-	var commerceRepository cart.Repository = store
+	var cartStore cart.CartStore = store
+	var purchaseReader cart.PurchaseReader = store
 	domainRegistry := extension.NewRegistry()
 	merchantHTTPClient := httpclient.New(httpclient.Config{})
+	managementToken := strings.TrimSpace(os.Getenv("MANAGEMENT_API_TOKEN"))
+	if managementToken == "" {
+		slog.Error("MANAGEMENT_API_TOKEN is required")
+		os.Exit(1)
+	}
+	offerCodec, err := offertoken.New(os.Getenv("OFFER_TOKEN_SECRET"), 30*time.Minute)
+	if err != nil {
+		slog.Error("configure offer tokens failed", "error", err)
+		os.Exit(1)
+	}
 
 	// 新しいDomainを追加するときは、Domain Extensionをこの一覧へ追加する。
 	domainExtensions := []extension.Extension{
-		travelhotel.New(indexRepository, merchantHTTPClient),
-		retailshoes.New(indexRepository, merchantHTTPClient),
+		travelhotel.New(indexRepository, merchantHTTPClient, offerCodec),
+		retailshoes.New(indexRepository, merchantHTTPClient, offerCodec),
 	}
 	for _, domainExtension := range domainExtensions {
 		if err := domainRegistry.Register(domainExtension); err != nil {
@@ -60,20 +74,18 @@ func main() {
 		search.DefaultMerchantLimit,
 		search.DefaultOfferLimit,
 	)
-	cartService := cart.NewService(commerceRepository)
-
-	indexer := discovery.NewIndexer(
+	cartService := cart.NewService(
+		cartStore,
+		purchaseReader,
+		offerCodec,
 		merchantRegistry,
-		indexRepository,
 		domainRegistry,
 	)
-	if err := indexer.RebuildAll(context.Background()); err != nil {
-		slog.Error("rebuild discovery indexes failed", "error", err)
-		os.Exit(1)
-	}
+	managementService := merchant.NewManagementService(store, domainRegistry)
 
 	// 新しいDomainのDomain API Handlerもこの一覧へ追加する。
 	routeMounters := []httpserver.RouteMounter{
+		managementapi.New(managementService, managementToken),
 		protocolapi.New(cartService),
 		travelhotelapi.New(searchService),
 		retailshoesapi.New(searchService),

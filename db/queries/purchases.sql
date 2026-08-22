@@ -26,6 +26,7 @@ INSERT INTO purchase_item (
     purchase_id,
     capability_id,
     offer_id,
+    merchant_offer_ref,
     offer_snapshot,
     amount,
     currency
@@ -35,6 +36,7 @@ VALUES (
     sqlc.arg(purchase_id),
     sqlc.arg(capability_id),
     sqlc.arg(offer_id),
+    sqlc.arg(merchant_offer_ref),
     sqlc.arg(offer_snapshot),
     sqlc.arg(amount)::BIGINT,
     sqlc.arg(currency)
@@ -61,6 +63,7 @@ SELECT
     capability.merchant_id,
     capability.domain_id,
     item.offer_id,
+    item.merchant_offer_ref,
     item.offer_snapshot,
     item.amount::BIGINT AS amount,
     item.currency

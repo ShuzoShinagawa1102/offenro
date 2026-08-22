@@ -6,11 +6,16 @@ import (
 	"strings"
 
 	postgresdb "github.com/ShuzoShinagawa1102/offenro/internal/platform/postgres/generated"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type transactionStarter interface {
+	Begin(ctx context.Context) (pgx.Tx, error)
+}
+
 type Store struct {
-	pool    *pgxpool.Pool
+	pool    transactionStarter
 	queries *postgresdb.Queries
 }
 
@@ -28,6 +33,12 @@ func Open(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("ping postgres: %w", err)
 	}
 	return pool, nil
+}
+
+// NewTransactionalStore is useful for integration tests that roll back every
+// write while still exercising Store-managed nested transactions.
+func NewTransactionalStore(tx pgx.Tx) *Store {
+	return &Store{pool: tx, queries: postgresdb.New(tx)}
 }
 
 func NewStore(pool *pgxpool.Pool) *Store {

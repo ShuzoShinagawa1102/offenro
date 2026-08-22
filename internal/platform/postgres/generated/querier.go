@@ -9,22 +9,41 @@ import (
 )
 
 type Querier interface {
+	ActivateMerchantForCapability(ctx context.Context, capabilityID string) (int64, error)
+	CreateAgent(ctx context.Context, arg CreateAgentParams) error
 	CreateCart(ctx context.Context, arg CreateCartParams) (int64, error)
 	CreateCartItem(ctx context.Context, arg CreateCartItemParams) (string, error)
 	CreateDiscoveryIndexEntry(ctx context.Context, arg CreateDiscoveryIndexEntryParams) (int64, error)
+	CreateIncentiveRule(ctx context.Context, arg CreateIncentiveRuleParams) error
+	CreateMerchant(ctx context.Context, arg CreateMerchantParams) error
+	CreateMerchantCapability(ctx context.Context, arg CreateMerchantCapabilityParams) error
 	CreatePurchase(ctx context.Context, arg CreatePurchaseParams) error
 	CreatePurchaseItem(ctx context.Context, arg CreatePurchaseItemParams) error
+	DeleteDiscoveryIndexByCapability(ctx context.Context, capabilityID string) error
 	DeleteDiscoveryIndexByDomain(ctx context.Context, domainID string) error
 	FindActiveMerchantCapabilitiesByDomain(ctx context.Context, domainID string) ([]FindActiveMerchantCapabilitiesByDomainRow, error)
 	FindDiscoveryIndexEntries(ctx context.Context, arg FindDiscoveryIndexEntriesParams) ([]FindDiscoveryIndexEntriesRow, error)
+	GetActiveMerchantCapability(ctx context.Context, capabilityID string) (GetActiveMerchantCapabilityRow, error)
+	GetAgent(ctx context.Context, agentID string) (Agent, error)
 	GetCart(ctx context.Context, cartID string) (Cart, error)
+	GetCommerceDomain(ctx context.Context, domainID string) (CommerceDomain, error)
+	GetIncentiveRule(ctx context.Context, incentiveRuleID string) (GetIncentiveRuleRow, error)
+	GetMerchant(ctx context.Context, merchantID string) (Merchant, error)
+	GetMerchantCapability(ctx context.Context, capabilityID string) (GetMerchantCapabilityRow, error)
 	GetPurchase(ctx context.Context, purchaseID string) (GetPurchaseRow, error)
 	ListCartItems(ctx context.Context, cartID string) ([]ListCartItemsRow, error)
+	ListCommerceDomains(ctx context.Context) ([]CommerceDomain, error)
+	ListIncentiveRules(ctx context.Context, capabilityID string) ([]ListIncentiveRulesRow, error)
+	ListMerchantCapabilities(ctx context.Context, merchantID string) ([]ListMerchantCapabilitiesRow, error)
 	ListPurchaseItems(ctx context.Context, purchaseID string) ([]ListPurchaseItemsRow, error)
 	MarkCartCheckedOut(ctx context.Context, arg MarkCartCheckedOutParams) (int64, error)
+	SetMerchantCapabilityStatus(ctx context.Context, arg SetMerchantCapabilityStatusParams) (int64, error)
 	TouchActiveCart(ctx context.Context, arg TouchActiveCartParams) (int64, error)
 	UpdateCart(ctx context.Context, arg UpdateCartParams) (int64, error)
 	UpdateCartItem(ctx context.Context, arg UpdateCartItemParams) (int64, error)
+	UpdateIncentiveRule(ctx context.Context, arg UpdateIncentiveRuleParams) (int64, error)
+	UpdateMerchant(ctx context.Context, arg UpdateMerchantParams) (int64, error)
+	UpdateMerchantCapability(ctx context.Context, arg UpdateMerchantCapabilityParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -8,6 +8,7 @@ import (
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/discovery"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/extension"
 	coremodel "github.com/ShuzoShinagawa1102/offenro/internal/core/model"
+	"github.com/ShuzoShinagawa1102/offenro/internal/core/offer"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/search"
 	modelapi "github.com/ShuzoShinagawa1102/offenro/internal/domain/travelhotel/generated/model"
 )
@@ -82,9 +83,10 @@ var _ extension.Extension = (*Extension)(nil)
 func New(
 	repository discovery.IndexRepository,
 	httpClient *http.Client,
+	offerIssuer offer.Issuer,
 ) *Extension {
 	return &Extension{
-		searcher:     NewSearcher(httpClient),
+		searcher:     NewSearcher(httpClient, offerIssuer),
 		discovery:    NewMerchantDiscovery(repository),
 		indexBuilder: NewIndexBuilder(httpClient),
 	}
@@ -104,4 +106,8 @@ func (e *Extension) MerchantDiscovery() search.MerchantDiscovery {
 
 func (e *Extension) IndexBuilder() discovery.DomainIndexBuilder {
 	return e.indexBuilder
+}
+
+func (e *Extension) OfferVerifier() offer.Verifier {
+	return e.searcher
 }

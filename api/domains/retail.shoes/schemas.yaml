@@ -78,6 +78,7 @@ components:
         - currency
         - product
         - quantity
+        - offer_expires_at
       properties:
         offer_id:
           type: string
@@ -93,6 +94,9 @@ components:
           $ref: "#/components/schemas/RetailShoesProduct"
         quantity:
           type: integer
+        offer_expires_at:
+          type: string
+          format: date-time
 
     RetailShoesSearchResponse:
       type: object
@@ -107,14 +111,15 @@ components:
     RetailShoesMerchantOffer:
       type: object
       required:
-        - offer_id
+        - merchant_offer_ref
         - amount
         - currency
         - product
         - quantity
       properties:
-        offer_id:
+        merchant_offer_ref:
           type: string
+          description: Opaque Merchant reference used by Offenro for revalidation
         amount:
           $ref: "../../common/schemas.yaml#/components/schemas/Amount"
         currency:
@@ -123,6 +128,9 @@ components:
           $ref: "#/components/schemas/RetailShoesProduct"
         quantity:
           type: integer
+        offer_expires_at:
+          type: string
+          format: date-time
 
     RetailShoesMerchantSearchResponse:
       type: object
@@ -143,3 +151,17 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RetailShoesProduct"
+
+    RetailShoesRevalidateRequest:
+      type: object
+      required: [merchant_offer_ref]
+      properties:
+        merchant_offer_ref:
+          type: string
+
+    RetailShoesRevalidateResponse:
+      type: object
+      required: [offer]
+      properties:
+        offer:
+          $ref: "#/components/schemas/RetailShoesMerchantOffer"

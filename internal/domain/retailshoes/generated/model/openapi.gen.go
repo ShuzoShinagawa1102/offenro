@@ -4,6 +4,8 @@
 package model
 
 import (
+	"time"
+
 	externalRef0 "github.com/ShuzoShinagawa1102/offenro/internal/generated/common"
 )
 
@@ -37,9 +39,12 @@ type RetailShoesMerchantOffer struct {
 
 	// Currency Example: JPY
 	Currency externalRef0.Currency `json:"currency"`
-	OfferId  string                `json:"offer_id"`
-	Product  RetailShoesProduct    `json:"product"`
-	Quantity int                   `json:"quantity"`
+
+	// MerchantOfferRef Opaque Merchant reference used by Offenro for revalidation
+	MerchantOfferRef string             `json:"merchant_offer_ref"`
+	OfferExpiresAt   *time.Time         `json:"offer_expires_at,omitempty"`
+	Product          RetailShoesProduct `json:"product"`
+	Quantity         int                `json:"quantity"`
 }
 
 // RetailShoesMerchantSearchResponse defines model for RetailShoesMerchantSearchResponse.
@@ -52,12 +57,13 @@ type RetailShoesOffer struct {
 	Amount externalRef0.Amount `json:"amount"`
 
 	// Currency Example: JPY
-	Currency   externalRef0.Currency `json:"currency"`
-	Domain     string                `json:"domain"`
-	MerchantId string                `json:"merchant_id"`
-	OfferId    string                `json:"offer_id"`
-	Product    RetailShoesProduct    `json:"product"`
-	Quantity   int                   `json:"quantity"`
+	Currency       externalRef0.Currency `json:"currency"`
+	Domain         string                `json:"domain"`
+	MerchantId     string                `json:"merchant_id"`
+	OfferExpiresAt time.Time             `json:"offer_expires_at"`
+	OfferId        string                `json:"offer_id"`
+	Product        RetailShoesProduct    `json:"product"`
+	Quantity       int                   `json:"quantity"`
 }
 
 // RetailShoesProduct defines model for RetailShoesProduct.
@@ -68,6 +74,16 @@ type RetailShoesProduct struct {
 	Name      string `json:"name"`
 	ProductId string `json:"product_id"`
 	Size      string `json:"size"`
+}
+
+// RetailShoesRevalidateRequest defines model for RetailShoesRevalidateRequest.
+type RetailShoesRevalidateRequest struct {
+	MerchantOfferRef string `json:"merchant_offer_ref"`
+}
+
+// RetailShoesRevalidateResponse defines model for RetailShoesRevalidateResponse.
+type RetailShoesRevalidateResponse struct {
+	Offer RetailShoesMerchantOffer `json:"offer"`
 }
 
 // RetailShoesSearchRequest defines model for RetailShoesSearchRequest.

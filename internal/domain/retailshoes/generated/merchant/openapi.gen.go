@@ -16,6 +16,9 @@ import (
 	externalRef0 "github.com/ShuzoShinagawa1102/offenro/internal/domain/retailshoes/generated/model"
 )
 
+// RevalidateRetailShoesOfferJSONRequestBody defines body for RevalidateRetailShoesOffer for application/json ContentType.
+type RevalidateRetailShoesOfferJSONRequestBody = externalRef0.RetailShoesRevalidateRequest
+
 // SearchRetailShoesOffersJSONRequestBody defines body for SearchRetailShoesOffers for application/json ContentType.
 type SearchRetailShoesOffersJSONRequestBody = externalRef0.RetailShoesSearchRequest
 
@@ -98,6 +101,20 @@ type ClientInterface interface {
 	// Corresponds with GET /retail/shoes/catalog (the `GetRetailShoesCatalog` operationId).
 	GetRetailShoesCatalog(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RevalidateRetailShoesOfferWithBody Revalidate a shoe offer before checkout
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /retail/shoes/offers/revalidate (the `RevalidateRetailShoesOffer` operationId).
+	RevalidateRetailShoesOfferWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RevalidateRetailShoesOffer Revalidate a shoe offer before checkout
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /retail/shoes/offers/revalidate (the `RevalidateRetailShoesOffer` operationId).
+	RevalidateRetailShoesOffer(ctx context.Context, body RevalidateRetailShoesOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SearchRetailShoesOffersWithBody Search current shoe offers
 	//
 	// Takes any type of body and a specified content type.
@@ -118,6 +135,40 @@ type ClientInterface interface {
 // Corresponds with GET /retail/shoes/catalog (the `GetRetailShoesCatalog` operationId).
 func (c *Client) GetRetailShoesCatalog(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetRetailShoesCatalogRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RevalidateRetailShoesOfferWithBody Revalidate a shoe offer before checkout
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /retail/shoes/offers/revalidate (the `RevalidateRetailShoesOffer` operationId).
+func (c *Client) RevalidateRetailShoesOfferWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevalidateRetailShoesOfferRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RevalidateRetailShoesOffer Revalidate a shoe offer before checkout
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /retail/shoes/offers/revalidate (the `RevalidateRetailShoesOffer` operationId).
+func (c *Client) RevalidateRetailShoesOffer(ctx context.Context, body RevalidateRetailShoesOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevalidateRetailShoesOfferRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +236,46 @@ func NewGetRetailShoesCatalogRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewRevalidateRetailShoesOfferRequest calls the generic RevalidateRetailShoesOffer builder with application/json body
+func NewRevalidateRetailShoesOfferRequest(server string, body RevalidateRetailShoesOfferJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRevalidateRetailShoesOfferRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewRevalidateRetailShoesOfferRequestWithBody constructs an http.Request for the RevalidateRetailShoesOffer method, with any body, and a specified content type
+func NewRevalidateRetailShoesOfferRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/retail/shoes/offers/revalidate")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -280,6 +371,20 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /retail/shoes/catalog (the `GetRetailShoesCatalog` operationId).
 	GetRetailShoesCatalogWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetRetailShoesCatalogResponse, error)
 
+	// RevalidateRetailShoesOfferWithBodyWithResponse Revalidate a shoe offer before checkout
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /retail/shoes/offers/revalidate (the `RevalidateRetailShoesOffer` operationId).
+	RevalidateRetailShoesOfferWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RevalidateRetailShoesOfferResponse, error)
+
+	// RevalidateRetailShoesOfferWithResponse Revalidate a shoe offer before checkout
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /retail/shoes/offers/revalidate (the `RevalidateRetailShoesOffer` operationId).
+	RevalidateRetailShoesOfferWithResponse(ctx context.Context, body RevalidateRetailShoesOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*RevalidateRetailShoesOfferResponse, error)
+
 	// SearchRetailShoesOffersWithBodyWithResponse Search current shoe offers
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -330,6 +435,47 @@ func (r GetRetailShoesCatalogResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetRetailShoesCatalogResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RevalidateRetailShoesOfferResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *externalRef0.RetailShoesRevalidateResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RevalidateRetailShoesOfferResponse) GetJSON200() *externalRef0.RetailShoesRevalidateResponse {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r RevalidateRetailShoesOfferResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RevalidateRetailShoesOfferResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RevalidateRetailShoesOfferResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RevalidateRetailShoesOfferResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -390,6 +536,32 @@ func (c *ClientWithResponses) GetRetailShoesCatalogWithResponse(ctx context.Cont
 	return ParseGetRetailShoesCatalogResponse(rsp)
 }
 
+// RevalidateRetailShoesOfferWithBodyWithResponse Revalidate a shoe offer before checkout
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /retail/shoes/offers/revalidate (the `RevalidateRetailShoesOffer` operationId).
+func (c *ClientWithResponses) RevalidateRetailShoesOfferWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RevalidateRetailShoesOfferResponse, error) {
+	rsp, err := c.RevalidateRetailShoesOfferWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevalidateRetailShoesOfferResponse(rsp)
+}
+
+// RevalidateRetailShoesOfferWithResponse Revalidate a shoe offer before checkout
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /retail/shoes/offers/revalidate (the `RevalidateRetailShoesOffer` operationId).
+func (c *ClientWithResponses) RevalidateRetailShoesOfferWithResponse(ctx context.Context, body RevalidateRetailShoesOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*RevalidateRetailShoesOfferResponse, error) {
+	rsp, err := c.RevalidateRetailShoesOffer(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevalidateRetailShoesOfferResponse(rsp)
+}
+
 // SearchRetailShoesOffersWithBodyWithResponse Search current shoe offers
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -436,6 +608,35 @@ func ParseGetRetailShoesCatalogResponse(rsp *http.Response) (*GetRetailShoesCata
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRevalidateRetailShoesOfferResponse parses an HTTP response from a RevalidateRetailShoesOfferWithResponse call
+func ParseRevalidateRetailShoesOfferResponse(rsp *http.Response) (*RevalidateRetailShoesOfferResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RevalidateRetailShoesOfferResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.RetailShoesRevalidateResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
 
 	}
 

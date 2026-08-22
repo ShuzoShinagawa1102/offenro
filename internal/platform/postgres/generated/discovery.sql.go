@@ -59,6 +59,16 @@ func (q *Queries) CreateDiscoveryIndexEntry(ctx context.Context, arg CreateDisco
 	return result.RowsAffected(), nil
 }
 
+const deleteDiscoveryIndexByCapability = `-- name: DeleteDiscoveryIndexByCapability :exec
+DELETE FROM discovery_index_entry
+WHERE capability_id = $1
+`
+
+func (q *Queries) DeleteDiscoveryIndexByCapability(ctx context.Context, capabilityID string) error {
+	_, err := q.db.Exec(ctx, deleteDiscoveryIndexByCapability, capabilityID)
+	return err
+}
+
 const deleteDiscoveryIndexByDomain = `-- name: DeleteDiscoveryIndexByDomain :exec
 DELETE FROM discovery_index_entry AS entry
 USING merchant_capability AS capability

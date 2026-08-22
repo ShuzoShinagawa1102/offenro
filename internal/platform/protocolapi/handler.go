@@ -43,6 +43,8 @@ func apiError(err error) commonapi.Error {
 		return commonapi.Error{Code: "not_found", Message: err.Error()}
 	case errors.Is(err, cart.ErrConflict):
 		return commonapi.Error{Code: "conflict", Message: err.Error()}
+	case errors.Is(err, cart.ErrRevalidation):
+		return commonapi.Error{Code: "merchant_revalidation_failed", Message: "merchant offer revalidation failed"}
 	default:
 		return commonapi.Error{Code: "internal_error", Message: "internal server error"}
 	}

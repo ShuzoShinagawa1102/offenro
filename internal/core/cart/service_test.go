@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/model"
+	"github.com/ShuzoShinagawa1102/offenro/internal/core/offer"
 )
 
 type testRepository struct {
@@ -50,10 +51,74 @@ func (r *testRepository) AddCartItem(
 	if r.cart.UpdatedAt != expectedUpdatedAt {
 		return model.CartItem{}, ErrConflict
 	}
-	item.CapabilityID = "capability-1"
 	r.cart.Items = append(r.cart.Items, item)
 	r.cart.UpdatedAt = updatedAt
 	return item, nil
+}
+
+type testOfferResolver struct {
+	references map[string]offer.Reference
+}
+
+func (r *testOfferResolver) Resolve(offerID string) (offer.Reference, error) {
+	value, ok := r.references[offerID]
+	if !ok {
+		return offer.Reference{}, offer.ErrInvalidReference
+	}
+	return value, nil
+}
+
+type testMerchantRegistry struct {
+	capability model.MerchantCapability
+}
+
+func (r *testMerchantRegistry) FindByDomain(context.Context, model.Domain) ([]model.MerchantCapability, error) {
+	return []model.MerchantCapability{r.capability}, nil
+}
+
+func (r *testMerchantRegistry) FindByID(context.Context, string) (model.MerchantCapability, error) {
+	return r.capability, nil
+}
+
+type testVerifier struct {
+	values map[string]offer.Verified
+}
+
+func (v *testVerifier) Domain() model.Domain { return model.Domain("travel.hotel") }
+
+func (v *testVerifier) Revalidate(_ context.Context, _ model.MerchantCapability, _ string, merchantOfferRef string) (offer.Verified, error) {
+	value, ok := v.values[merchantOfferRef]
+	if !ok {
+		return offer.Verified{}, offer.ErrUnavailable
+	}
+	return value, nil
+}
+
+type testVerifierRegistry struct{ verifier offer.Verifier }
+
+func (r *testVerifierRegistry) OfferVerifier(domain model.Domain) (offer.Verifier, bool) {
+	return r.verifier, domain == r.verifier.Domain()
+}
+
+func newTestService(repository *testRepository, offerIDs map[string]string, verified map[string]offer.Verified) *Service {
+	expiresAt := time.Now().Add(time.Hour).UTC()
+	references := make(map[string]offer.Reference, len(offerIDs))
+	for offerID, merchantOfferRef := range offerIDs {
+		references[offerID] = offer.Reference{
+			CapabilityID: "capability-1", MerchantID: model.MerchantID("merchant-1"),
+			Domain: model.Domain("travel.hotel"), MerchantOfferRef: merchantOfferRef,
+			ExpiresAt: expiresAt,
+		}
+	}
+	capability := model.MerchantCapability{
+		ID: "capability-1", Domain: model.Domain("travel.hotel"), Status: model.CapabilityStatusActive,
+		Merchant: model.Merchant{ID: model.MerchantID("merchant-1"), Status: model.MerchantStatusActive},
+	}
+	verifier := &testVerifier{values: verified}
+	return NewService(
+		repository, repository, &testOfferResolver{references: references},
+		&testMerchantRegistry{capability: capability}, &testVerifierRegistry{verifier: verifier},
+	)
 }
 
 func (r *testRepository) UpdateCartItem(
@@ -104,7 +169,9 @@ func TestServiceCheckoutCreatesPurchaseFromActiveItems(t *testing.T) {
 	t.Parallel()
 
 	repository := &testRepository{}
-	service := NewService(repository)
+	service := newTestService(repository, map[string]string{"offer-1": "merchant-offer-1"}, map[string]offer.Verified{
+		"merchant-offer-1": {Snapshot: json.RawMessage(`{"offer_id":"offer-1","revalidated":true}`), Amount: 12000, Currency: "JPY"},
+	})
 	ctx := context.Background()
 
 	created, err := service.Create(ctx, CreateInput{
@@ -115,8 +182,6 @@ func TestServiceCheckoutCreatesPurchaseFromActiveItems(t *testing.T) {
 		t.Fatalf("Create() error = %v", err)
 	}
 	item, err := service.AddItem(ctx, created.ID, AddItemInput{
-		MerchantID:    "merchant-1",
-		Domain:        "travel.hotel",
 		OfferID:       "offer-1",
 		OfferSnapshot: json.RawMessage(`{"offer_id":"offer-1"}`),
 		Amount:        12000,
@@ -157,7 +222,12 @@ func TestServiceCheckoutRejectsMixedCurrencies(t *testing.T) {
 	t.Parallel()
 
 	repository := &testRepository{}
-	service := NewService(repository)
+	service := newTestService(repository, map[string]string{
+		"offer-jpy": "merchant-offer-jpy", "offer-usd": "merchant-offer-usd",
+	}, map[string]offer.Verified{
+		"merchant-offer-jpy": {Snapshot: json.RawMessage(`{"offer_id":"offer-jpy"}`), Amount: 100, Currency: "JPY"},
+		"merchant-offer-usd": {Snapshot: json.RawMessage(`{"offer_id":"offer-usd"}`), Amount: 100, Currency: "USD"},
+	})
 	ctx := context.Background()
 	created, err := service.Create(ctx, CreateInput{AgentID: "agent-1", BuyerRef: "buyer-1"})
 	if err != nil {
@@ -166,16 +236,12 @@ func TestServiceCheckoutRejectsMixedCurrencies(t *testing.T) {
 
 	for _, input := range []AddItemInput{
 		{
-			MerchantID:    "merchant-1",
-			Domain:        "travel.hotel",
 			OfferID:       "offer-jpy",
 			OfferSnapshot: json.RawMessage(`{"offer_id":"offer-jpy"}`),
 			Amount:        100,
 			Currency:      "JPY",
 		},
 		{
-			MerchantID:    "merchant-1",
-			Domain:        "travel.hotel",
 			OfferID:       "offer-usd",
 			OfferSnapshot: json.RawMessage(`{"offer_id":"offer-usd"}`),
 			Amount:        100,
@@ -190,5 +256,32 @@ func TestServiceCheckoutRejectsMixedCurrencies(t *testing.T) {
 	_, err = service.Checkout(ctx, created.ID)
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("Checkout() error = %v, want invalid input", err)
+	}
+}
+
+func TestServiceCheckoutRejectsChangedMerchantPrice(t *testing.T) {
+	t.Parallel()
+
+	repository := &testRepository{}
+	service := newTestService(repository, map[string]string{"offer-1": "merchant-offer-1"}, map[string]offer.Verified{
+		"merchant-offer-1": {Snapshot: json.RawMessage(`{"offer_id":"offer-1"}`), Amount: 13000, Currency: "JPY"},
+	})
+	ctx := context.Background()
+	created, err := service.Create(ctx, CreateInput{AgentID: "agent-1", BuyerRef: "buyer-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.AddItem(ctx, created.ID, AddItemInput{
+		OfferID: "offer-1", OfferSnapshot: json.RawMessage(`{"offer_id":"offer-1"}`),
+		Amount: 12000, Currency: "JPY",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := service.Checkout(ctx, created.ID); !errors.Is(err, ErrConflict) {
+		t.Fatalf("Checkout() error = %v, want conflict", err)
+	}
+	if repository.cart.Status != model.CartStatusActive {
+		t.Fatalf("cart status = %s, want ACTIVE", repository.cart.Status)
 	}
 }

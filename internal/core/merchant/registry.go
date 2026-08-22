@@ -9,4 +9,5 @@ import (
 // Registry resolves active merchants that have declared support for a domain.
 type Registry interface {
 	FindByDomain(ctx context.Context, domain model.Domain) ([]model.MerchantCapability, error)
+	FindByID(ctx context.Context, capabilityID string) (model.MerchantCapability, error)
 }

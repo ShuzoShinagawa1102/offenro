@@ -9,6 +9,81 @@ import (
 	"context"
 )
 
+const activateMerchantForCapability = `-- name: ActivateMerchantForCapability :execrows
+UPDATE merchant
+SET status = 'ACTIVE'
+WHERE merchant_id = (
+    SELECT merchant_id
+    FROM merchant_capability
+    WHERE capability_id = $1
+)
+  AND status IN ('PENDING', 'ACTIVE')
+`
+
+func (q *Queries) ActivateMerchantForCapability(ctx context.Context, capabilityID string) (int64, error) {
+	result, err := q.db.Exec(ctx, activateMerchantForCapability, capabilityID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const createMerchant = `-- name: CreateMerchant :exec
+INSERT INTO merchant (merchant_id, name, status)
+VALUES ($1, $2, $3)
+`
+
+type CreateMerchantParams struct {
+	MerchantID string
+	Name       string
+	Status     string
+}
+
+func (q *Queries) CreateMerchant(ctx context.Context, arg CreateMerchantParams) error {
+	_, err := q.db.Exec(ctx, createMerchant, arg.MerchantID, arg.Name, arg.Status)
+	return err
+}
+
+const createMerchantCapability = `-- name: CreateMerchantCapability :exec
+INSERT INTO merchant_capability (
+    capability_id,
+    merchant_id,
+    domain_id,
+    api_base_url,
+    status,
+    protocol_version
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
+)
+`
+
+type CreateMerchantCapabilityParams struct {
+	CapabilityID    string
+	MerchantID      string
+	DomainID        string
+	ApiBaseUrl      string
+	Status          string
+	ProtocolVersion string
+}
+
+func (q *Queries) CreateMerchantCapability(ctx context.Context, arg CreateMerchantCapabilityParams) error {
+	_, err := q.db.Exec(ctx, createMerchantCapability,
+		arg.CapabilityID,
+		arg.MerchantID,
+		arg.DomainID,
+		arg.ApiBaseUrl,
+		arg.Status,
+		arg.ProtocolVersion,
+	)
+	return err
+}
+
 const findActiveMerchantCapabilitiesByDomain = `-- name: FindActiveMerchantCapabilitiesByDomain :many
 SELECT
     capability.capability_id,
@@ -55,4 +130,229 @@ func (q *Queries) FindActiveMerchantCapabilitiesByDomain(ctx context.Context, do
 		return nil, err
 	}
 	return items, nil
+}
+
+const getActiveMerchantCapability = `-- name: GetActiveMerchantCapability :one
+SELECT
+    capability.capability_id,
+    merchant.merchant_id,
+    merchant.name AS merchant_name,
+    merchant.status AS merchant_status,
+    capability.api_base_url,
+    capability.domain_id,
+    capability.status AS capability_status,
+    capability.protocol_version
+FROM merchant_capability AS capability
+JOIN merchant ON merchant.merchant_id = capability.merchant_id
+JOIN commerce_domain AS domain ON domain.domain_id = capability.domain_id
+WHERE capability.capability_id = $1
+  AND capability.status = 'ACTIVE'
+  AND merchant.status = 'ACTIVE'
+  AND domain.status = 'ACTIVE'
+`
+
+type GetActiveMerchantCapabilityRow struct {
+	CapabilityID     string
+	MerchantID       string
+	MerchantName     string
+	MerchantStatus   string
+	ApiBaseUrl       string
+	DomainID         string
+	CapabilityStatus string
+	ProtocolVersion  string
+}
+
+func (q *Queries) GetActiveMerchantCapability(ctx context.Context, capabilityID string) (GetActiveMerchantCapabilityRow, error) {
+	row := q.db.QueryRow(ctx, getActiveMerchantCapability, capabilityID)
+	var i GetActiveMerchantCapabilityRow
+	err := row.Scan(
+		&i.CapabilityID,
+		&i.MerchantID,
+		&i.MerchantName,
+		&i.MerchantStatus,
+		&i.ApiBaseUrl,
+		&i.DomainID,
+		&i.CapabilityStatus,
+		&i.ProtocolVersion,
+	)
+	return i, err
+}
+
+const getMerchant = `-- name: GetMerchant :one
+SELECT merchant_id, name, status
+FROM merchant
+WHERE merchant_id = $1
+`
+
+func (q *Queries) GetMerchant(ctx context.Context, merchantID string) (Merchant, error) {
+	row := q.db.QueryRow(ctx, getMerchant, merchantID)
+	var i Merchant
+	err := row.Scan(&i.MerchantID, &i.Name, &i.Status)
+	return i, err
+}
+
+const getMerchantCapability = `-- name: GetMerchantCapability :one
+SELECT
+    capability.capability_id,
+    merchant.merchant_id,
+    merchant.name AS merchant_name,
+    merchant.status AS merchant_status,
+    capability.domain_id,
+    capability.api_base_url,
+    capability.status AS capability_status,
+    capability.protocol_version
+FROM merchant_capability AS capability
+JOIN merchant ON merchant.merchant_id = capability.merchant_id
+WHERE capability.capability_id = $1
+`
+
+type GetMerchantCapabilityRow struct {
+	CapabilityID     string
+	MerchantID       string
+	MerchantName     string
+	MerchantStatus   string
+	DomainID         string
+	ApiBaseUrl       string
+	CapabilityStatus string
+	ProtocolVersion  string
+}
+
+func (q *Queries) GetMerchantCapability(ctx context.Context, capabilityID string) (GetMerchantCapabilityRow, error) {
+	row := q.db.QueryRow(ctx, getMerchantCapability, capabilityID)
+	var i GetMerchantCapabilityRow
+	err := row.Scan(
+		&i.CapabilityID,
+		&i.MerchantID,
+		&i.MerchantName,
+		&i.MerchantStatus,
+		&i.DomainID,
+		&i.ApiBaseUrl,
+		&i.CapabilityStatus,
+		&i.ProtocolVersion,
+	)
+	return i, err
+}
+
+const listMerchantCapabilities = `-- name: ListMerchantCapabilities :many
+SELECT
+    capability.capability_id,
+    merchant.merchant_id,
+    merchant.name AS merchant_name,
+    merchant.status AS merchant_status,
+    capability.domain_id,
+    capability.api_base_url,
+    capability.status AS capability_status,
+    capability.protocol_version
+FROM merchant_capability AS capability
+JOIN merchant ON merchant.merchant_id = capability.merchant_id
+WHERE capability.merchant_id = $1
+ORDER BY capability.domain_id
+`
+
+type ListMerchantCapabilitiesRow struct {
+	CapabilityID     string
+	MerchantID       string
+	MerchantName     string
+	MerchantStatus   string
+	DomainID         string
+	ApiBaseUrl       string
+	CapabilityStatus string
+	ProtocolVersion  string
+}
+
+func (q *Queries) ListMerchantCapabilities(ctx context.Context, merchantID string) ([]ListMerchantCapabilitiesRow, error) {
+	rows, err := q.db.Query(ctx, listMerchantCapabilities, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMerchantCapabilitiesRow{}
+	for rows.Next() {
+		var i ListMerchantCapabilitiesRow
+		if err := rows.Scan(
+			&i.CapabilityID,
+			&i.MerchantID,
+			&i.MerchantName,
+			&i.MerchantStatus,
+			&i.DomainID,
+			&i.ApiBaseUrl,
+			&i.CapabilityStatus,
+			&i.ProtocolVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setMerchantCapabilityStatus = `-- name: SetMerchantCapabilityStatus :execrows
+UPDATE merchant_capability
+SET status = $1
+WHERE capability_id = $2
+`
+
+type SetMerchantCapabilityStatusParams struct {
+	Status       string
+	CapabilityID string
+}
+
+func (q *Queries) SetMerchantCapabilityStatus(ctx context.Context, arg SetMerchantCapabilityStatusParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setMerchantCapabilityStatus, arg.Status, arg.CapabilityID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateMerchant = `-- name: UpdateMerchant :execrows
+UPDATE merchant
+SET name = $1,
+    status = $2
+WHERE merchant_id = $3
+`
+
+type UpdateMerchantParams struct {
+	Name       string
+	Status     string
+	MerchantID string
+}
+
+func (q *Queries) UpdateMerchant(ctx context.Context, arg UpdateMerchantParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateMerchant, arg.Name, arg.Status, arg.MerchantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateMerchantCapability = `-- name: UpdateMerchantCapability :execrows
+UPDATE merchant_capability
+SET api_base_url = $1,
+    status = $2,
+    protocol_version = $3
+WHERE capability_id = $4
+`
+
+type UpdateMerchantCapabilityParams struct {
+	ApiBaseUrl      string
+	Status          string
+	ProtocolVersion string
+	CapabilityID    string
+}
+
+func (q *Queries) UpdateMerchantCapability(ctx context.Context, arg UpdateMerchantCapabilityParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateMerchantCapability,
+		arg.ApiBaseUrl,
+		arg.Status,
+		arg.ProtocolVersion,
+		arg.CapabilityID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

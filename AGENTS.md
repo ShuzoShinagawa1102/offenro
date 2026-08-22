@@ -2,7 +2,7 @@
 
 ## プロジェクト概要
 
-Offenroは、成果報酬型のエージェントコマースを成立させるためのプロトコルである。Agentから構造化された検索条件を受け取り、Merchant Live APIから最新Offerを取得して統合し、CartからCheckoutを経てPurchaseを生成する。
+Offenroは、成果報酬型のエージェントコマースを成立させるためのプロトコルである。Merchant Management APIでMerchant／Capability／Incentiveを登録し、Agentから構造化された検索条件を受け取り、Merchant Live APIから最新Offerを取得して統合し、CartからCheckoutを経てPurchaseを生成する。
 
 現在のPrototypeは、次のDomain Extensionを持つ。
 
@@ -84,6 +84,17 @@ api/protocol/commerce.openapi.yaml
 
 生成コードは直接編集しない。
 
+### Management APIモデル
+
+Merchant、Capability、Incentive、Agentの管理API Contractは次を正とする。
+
+```text
+api/management/
+→ internal/generated/management/
+```
+
+生成コードは直接編集しない。
+
 ## 開発者がDomain追加・変更時に触る場所
 
 Domainの主要な手書き実装は、意図的に次の4ファイルへ絞る。
@@ -92,7 +103,7 @@ Domainの主要な手書き実装は、意図的に次の4ファイルへ絞る�
 internal/domain/{domain}/
 ├── generated/       # 自動生成。編集禁止
 ├── extension.go     # Core登録と薄いModel Adapter
-├── searcher.go      # Merchant Live Search
+├── searcher.go      # Merchant Live Search／Offer Revalidate
 ├── discovery.go     # Merchant選定
 └── index_builder.go # CatalogからIndexを生成
 ```
@@ -143,6 +154,8 @@ Domain Searcher
 ↓
 Generated Merchant Client
 ↓
+merchant_offer_refをOpaque offer_idへ変換
+↓
 Domain Offer Adapter
 ↓
 Agent Response
@@ -189,6 +202,9 @@ api/protocol/schemas.yaml
 api/protocol/commerce.openapi.yaml
 → internal/generated/protocol/commerce/openapi.gen.go
 
+api/management/schemas.yaml + management.openapi.yaml
+→ internal/generated/management/
+
 api/domains/{domain}/schemas.yaml
 → internal/domain/{domain}/generated/model/openapi.gen.go
 
@@ -219,6 +235,7 @@ internal/domain/     # Domain Extension
 internal/generated/  # Domain横断の生成APIモデル
 internal/platform/   # HTTP、PostgreSQL等の技術Adapter
 internal/testutil/   # 複数packageで共有するテスト専用Fake
+test/integration/    # PostgreSQLとHTTPを通す結合テスト
 ```
 
 ## Protocol責務外
@@ -245,6 +262,10 @@ OffenroはContract、Merchant接続、Discovery、Offer統合までを責務と�
 - InMemory Adapterは`internal/testutil`へ置き、テスト用途に限定する。
 - DB接続情報は`DATABASE_URL`で受け取り、アプリケーション起動時にMigrationを実行しない。
 - Merchant HTTPの共通Timeout設定は`internal/platform/httpclient`へ置く。
+- Management APIは`MANAGEMENT_API_TOKEN`で保護し、Offer IDは32文字以上の`OFFER_TOKEN_SECRET`で暗号化・認証する。
+- Agent向け`offer_id`とMerchant向け`merchant_offer_ref`を分離し、後者をAgent APIへ公開しない。
+- Checkout時はMerchant Live APIでOfferを再確認し、Purchaseは`CREATED`、Cartは`CHECKED_OUT`として同一Transactionで保存する。
+- `Purchase.CONFIRMED`はMerchant側の注文・予約成立後にのみ設定する。
 - 自然言語解釈はAgent側の責務とし、Coreには構造化済みConditionを渡す。
 - 必要のない抽象化や機能を先回りして追加しない。
 

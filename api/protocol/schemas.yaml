@@ -42,23 +42,17 @@ components:
 
     AddCartItemRequest:
       type: object
-      required: [merchant_id, domain, offer_id, offer_snapshot, amount, currency]
+      required: [offer_id, offer_snapshot, amount, currency]
       properties:
-        merchant_id:
-          type: string
-        domain:
-          type: string
         offer_id:
           type: string
+          description: Opaque Offenro offer identifier returned by a Domain API
         offer_snapshot:
           $ref: "#/components/schemas/OfferSnapshot"
         amount:
           $ref: "../common/schemas.yaml#/components/schemas/Amount"
         currency:
           $ref: "../common/schemas.yaml#/components/schemas/Currency"
-        offer_expires_at:
-          type: string
-          format: date-time
 
     UpdateCartItemRequest:
       type: object

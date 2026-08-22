@@ -93,9 +93,8 @@ func (h *Handler) AddCartItem(ctx context.Context, request commerceapi.AddCartIt
 		return nil, fmt.Errorf("encode offer snapshot: %w", err)
 	}
 	item, err := h.carts.AddItem(ctx, request.CartId, cart.AddItemInput{
-		MerchantID: model.MerchantID(request.Body.MerchantId), Domain: model.Domain(request.Body.Domain),
 		OfferID: request.Body.OfferId, OfferSnapshot: snapshot, Amount: request.Body.Amount,
-		Currency: request.Body.Currency, OfferExpiresAt: request.Body.OfferExpiresAt,
+		Currency: request.Body.Currency,
 	})
 	if err != nil {
 		switch {

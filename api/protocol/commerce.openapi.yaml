@@ -155,6 +155,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "502":
+          $ref: "#/components/responses/BadGateway"
 
   /v1/purchases/{purchase_id}:
     parameters:
@@ -208,6 +210,12 @@ components:
             $ref: "../common/schemas.yaml#/components/schemas/Error"
     Conflict:
       description: Resource state conflict
+      content:
+        application/json:
+          schema:
+            $ref: "../common/schemas.yaml#/components/schemas/Error"
+    BadGateway:
+      description: Merchant Live API revalidation failed
       content:
         application/json:
           schema:
