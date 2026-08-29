@@ -121,6 +121,10 @@ docker compose down
 
 詳細は[DB環境](doc/database-environment.md)と[マイグレーション](doc/migrations.md)を参照してください。
 
+## Stripe CLI
+
+Sandboxへのログインと今後のWebhook開発準備は[Stripe CLIローカル開発](doc/stripe-local-development.md)を参照してください。
+
 ## Server起動
 
 `travel.hotel`と`retail.shoes`を登録したOffenro Serverを起動します。
