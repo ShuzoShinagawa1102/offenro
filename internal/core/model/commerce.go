@@ -56,15 +56,16 @@ type CartItem struct {
 }
 
 type Purchase struct {
-	ID          string
-	CartID      string
-	AgentID     string
-	BuyerRef    string
-	Status      PurchaseStatus
-	Items       []PurchaseItem
-	TotalAmount int64
-	Currency    string
-	PurchasedAt time.Time
+	ID           string
+	CartID       string
+	AgentID      string
+	BuyerRef     string
+	Status       PurchaseStatus
+	Items        []PurchaseItem
+	Fulfillments []MerchantFulfillment
+	TotalAmount  int64
+	Currency     string
+	PurchasedAt  time.Time
 }
 
 type PurchaseItem struct {
@@ -78,4 +79,28 @@ type PurchaseItem struct {
 	OfferSnapshot    json.RawMessage
 	Amount           int64
 	Currency         string
+}
+
+type MerchantFulfillmentStatus string
+
+const (
+	MerchantFulfillmentStatusPending   MerchantFulfillmentStatus = "PENDING"
+	MerchantFulfillmentStatusConfirmed MerchantFulfillmentStatus = "CONFIRMED"
+	MerchantFulfillmentStatusRejected  MerchantFulfillmentStatus = "REJECTED"
+	MerchantFulfillmentStatusUnknown   MerchantFulfillmentStatus = "UNKNOWN"
+)
+
+// MerchantFulfillment tracks the merchant-side order or reservation for one PurchaseItem.
+// DetailsSnapshot is opaque to Protocol Core and interpreted only by its domain extension.
+type MerchantFulfillment struct {
+	ID               string
+	PurchaseItemID   string
+	Status           MerchantFulfillmentStatus
+	IdempotencyKey   string
+	MerchantOrderRef string
+	DetailsSnapshot  json.RawMessage
+	ResponseSnapshot json.RawMessage
+	FailureCode      string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }

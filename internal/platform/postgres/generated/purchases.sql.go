@@ -28,7 +28,7 @@ VALUES (
     $3,
     $4,
     $5,
-    $6::BIGINT,
+    $6,
     $7,
     $8
 )
@@ -77,7 +77,7 @@ VALUES (
     $4,
     $5,
     $6,
-    $7::BIGINT,
+    $7,
     $8
 )
 `
@@ -114,27 +114,16 @@ SELECT
     agent_id,
     buyer_ref,
     status,
-    total_amount::BIGINT AS total_amount,
+    total_amount,
     currency,
     purchased_at
 FROM purchase
 WHERE purchase_id = $1
 `
 
-type GetPurchaseRow struct {
-	PurchaseID  string
-	CartID      string
-	AgentID     string
-	BuyerRef    string
-	Status      string
-	TotalAmount int64
-	Currency    string
-	PurchasedAt pgtype.Timestamptz
-}
-
-func (q *Queries) GetPurchase(ctx context.Context, purchaseID string) (GetPurchaseRow, error) {
+func (q *Queries) GetPurchase(ctx context.Context, purchaseID string) (Purchase, error) {
 	row := q.db.QueryRow(ctx, getPurchase, purchaseID)
-	var i GetPurchaseRow
+	var i Purchase
 	err := row.Scan(
 		&i.PurchaseID,
 		&i.CartID,
@@ -158,7 +147,7 @@ SELECT
     item.offer_id,
     item.merchant_offer_ref,
     item.offer_snapshot,
-    item.amount::BIGINT AS amount,
+    item.amount,
     item.currency
 FROM purchase_item AS item
 JOIN merchant_capability AS capability

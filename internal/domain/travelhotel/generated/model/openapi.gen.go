@@ -10,6 +10,27 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for TravelHotelReservationResultStatus.
+const (
+	CONFIRMED TravelHotelReservationResultStatus = "CONFIRMED"
+	PENDING   TravelHotelReservationResultStatus = "PENDING"
+	REJECTED  TravelHotelReservationResultStatus = "REJECTED"
+)
+
+// Valid indicates whether the value is a known member of the TravelHotelReservationResultStatus enum.
+func (e TravelHotelReservationResultStatus) Valid() bool {
+	switch e {
+	case CONFIRMED:
+		return true
+	case PENDING:
+		return true
+	case REJECTED:
+		return true
+	default:
+		return false
+	}
+}
+
 // TravelHotel defines model for TravelHotel.
 type TravelHotel struct {
 	City           string `json:"city"`
@@ -75,6 +96,31 @@ type TravelHotelOffer struct {
 	OfferId        string                `json:"offer_id"`
 	Stay           TravelHotelStay       `json:"stay"`
 }
+
+// TravelHotelReservationDetails defines model for TravelHotelReservationDetails.
+type TravelHotelReservationDetails struct {
+	Email         openapi_types.Email `json:"email"`
+	LeadGuestName string              `json:"lead_guest_name"`
+}
+
+// TravelHotelReservationRequest defines model for TravelHotelReservationRequest.
+type TravelHotelReservationRequest struct {
+	BuyerRef         string                        `json:"buyer_ref"`
+	Details          TravelHotelReservationDetails `json:"details"`
+	MerchantOfferRef string                        `json:"merchant_offer_ref"`
+	PurchaseId       string                        `json:"purchase_id"`
+	PurchaseItemId   string                        `json:"purchase_item_id"`
+}
+
+// TravelHotelReservationResult defines model for TravelHotelReservationResult.
+type TravelHotelReservationResult struct {
+	FailureCode      *string                            `json:"failure_code,omitempty"`
+	MerchantOrderRef string                             `json:"merchant_order_ref"`
+	Status           TravelHotelReservationResultStatus `json:"status"`
+}
+
+// TravelHotelReservationResultStatus defines model for TravelHotelReservationResult.Status.
+type TravelHotelReservationResultStatus string
 
 // TravelHotelRevalidateRequest defines model for TravelHotelRevalidateRequest.
 type TravelHotelRevalidateRequest struct {

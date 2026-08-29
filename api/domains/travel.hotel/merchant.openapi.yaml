@@ -54,3 +54,64 @@ paths:
                 $ref: "./schemas.yaml#/components/schemas/TravelHotelRevalidateResponse"
         "404":
           description: Offer is no longer available
+
+  /travel/hotel/reservations:
+    post:
+      operationId: createTravelHotelReservation
+      summary: Create an idempotent hotel reservation
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/TravelHotelReservationRequest"
+      responses:
+        "200":
+          description: Existing reservation result for the same idempotency key
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/TravelHotelReservationResult"
+        "201":
+          description: Reservation accepted
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/TravelHotelReservationResult"
+        "409":
+          description: Reservation rejected
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/TravelHotelReservationResult"
+
+  /travel/hotel/reservations/by-idempotency-key/{idempotency_key}:
+    get:
+      operationId: getTravelHotelReservationByIdempotencyKey
+      summary: Resolve a reservation after an uncertain response
+      parameters:
+        - name: idempotency_key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Reservation result
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/TravelHotelReservationResult"
+        "404":
+          description: Reservation not found
+
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string

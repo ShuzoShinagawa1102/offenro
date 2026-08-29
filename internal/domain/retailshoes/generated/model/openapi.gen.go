@@ -9,6 +9,27 @@ import (
 	externalRef0 "github.com/ShuzoShinagawa1102/offenro/internal/generated/common"
 )
 
+// Defines values for RetailShoesOrderResultStatus.
+const (
+	CONFIRMED RetailShoesOrderResultStatus = "CONFIRMED"
+	PENDING   RetailShoesOrderResultStatus = "PENDING"
+	REJECTED  RetailShoesOrderResultStatus = "REJECTED"
+)
+
+// Valid indicates whether the value is a known member of the RetailShoesOrderResultStatus enum.
+func (e RetailShoesOrderResultStatus) Valid() bool {
+	switch e {
+	case CONFIRMED:
+		return true
+	case PENDING:
+		return true
+	case REJECTED:
+		return true
+	default:
+		return false
+	}
+}
+
 // RetailShoesCatalogResponse defines model for RetailShoesCatalogResponse.
 type RetailShoesCatalogResponse struct {
 	Products []RetailShoesProduct `json:"products"`
@@ -26,6 +47,15 @@ type RetailShoesCriteria struct {
 	//
 	// Example: 27.0
 	Size string `json:"size"`
+}
+
+// RetailShoesDeliveryDetails defines model for RetailShoesDeliveryDetails.
+type RetailShoesDeliveryDetails struct {
+	AddressLine1  string  `json:"address_line1"`
+	AddressLine2  *string `json:"address_line2,omitempty"`
+	CountryCode   string  `json:"country_code"`
+	PostalCode    string  `json:"postal_code"`
+	RecipientName string  `json:"recipient_name"`
 }
 
 // RetailShoesFilters defines model for RetailShoesFilters.
@@ -65,6 +95,25 @@ type RetailShoesOffer struct {
 	Product        RetailShoesProduct    `json:"product"`
 	Quantity       int                   `json:"quantity"`
 }
+
+// RetailShoesOrderRequest defines model for RetailShoesOrderRequest.
+type RetailShoesOrderRequest struct {
+	BuyerRef         string                     `json:"buyer_ref"`
+	Details          RetailShoesDeliveryDetails `json:"details"`
+	MerchantOfferRef string                     `json:"merchant_offer_ref"`
+	PurchaseId       string                     `json:"purchase_id"`
+	PurchaseItemId   string                     `json:"purchase_item_id"`
+}
+
+// RetailShoesOrderResult defines model for RetailShoesOrderResult.
+type RetailShoesOrderResult struct {
+	FailureCode      *string                      `json:"failure_code,omitempty"`
+	MerchantOrderRef string                       `json:"merchant_order_ref"`
+	Status           RetailShoesOrderResultStatus `json:"status"`
+}
+
+// RetailShoesOrderResultStatus defines model for RetailShoesOrderResult.Status.
+type RetailShoesOrderResultStatus string
 
 // RetailShoesProduct defines model for RetailShoesProduct.
 type RetailShoesProduct struct {

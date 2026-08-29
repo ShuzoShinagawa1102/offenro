@@ -20,6 +20,7 @@ db/queries/*.sql
 
 - Merchant、Capability、Incentiveの登録・状態遷移は`merchant.ManagementUseCases`が担当する。
 - Cart操作、Offer再確認、Purchase生成は`cart.Service`が担当する。
+- Merchant注文・予約の冪等性、状態追跡、Purchase状態集約は`fulfillment.Service`が担当する。
 - `CartStore`と`PurchaseReader`は利用目的で分け、巨大なテーブルCRUD Interfaceにしない。
 - 複数AggregateをまとめるDashboardは、必要になった時点で専用Read Modelと専用SQL Queryを追加する。
 - `getPurchase().getParent()`のような暗黙Lazy Loadは使わない。必要な関連はUse Caseが明示的なRepository操作で取得する。
@@ -45,7 +46,9 @@ Management APIが提供する現在の操作はMerchant、Capability、Incentive
 5. go tool sqlc vet && go test ./...
 ```
 
-Migration SQLがDB Schemaの正、`db/queries`がQueryの正である。`internal/platform/postgres/generated`は直接編集しない。
+論理モデルと設計理由は`doc/database-model.md`、Migration SQLは物理DB Schemaの正、`db/queries`はQueryの正である。Schema変更ではこれらとCoreモデルを同じ変更で更新する。`internal/platform/postgres/generated`は直接編集しない。
+
+金額は通貨の最小単位を表す整数として、OpenAPI／Coreは`int64`、PostgreSQLは`BIGINT`で統一する。割合を表す`incentive_rule.reward_value`だけは`NUMERIC(19, 4)`を使用する。
 
 ## Checkoutの整合性境界
 
@@ -59,3 +62,16 @@ Cart ACTIVE
 ```
 
 失効・在庫切れ・価格変更は409、Merchant通信障害は502とし、どちらもCartを`ACTIVE`のまま残す。`Purchase.CONFIRMED`はMerchant側の注文・予約成立後にだけ設定する。
+
+## Merchant Fulfillmentの整合性境界
+
+```text
+Purchase CREATED
+→ Purchase ItemごとにMerchantFulfillment PENDINGと冪等キーをTransactionで保存
+→ Transaction終了
+→ Domain FulfillerからMerchant APIを呼ぶ
+→ Itemごとの結果をCONFIRMED／REJECTED／UNKNOWNとして保存
+→ 全件CONFIRMEDの場合だけPurchase CONFIRMED
+```
+
+Merchant Capabilityは`purchase_item.capability_id`から導出し、`merchant_fulfillment`へ重複保存しない。結果不明時は同じ冪等キーでMerchantへ照会してから再送する。

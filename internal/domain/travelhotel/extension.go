@@ -7,6 +7,7 @@ import (
 
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/discovery"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/extension"
+	"github.com/ShuzoShinagawa1102/offenro/internal/core/fulfillment"
 	coremodel "github.com/ShuzoShinagawa1102/offenro/internal/core/model"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/offer"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/search"
@@ -76,6 +77,7 @@ type Extension struct {
 	searcher     *Searcher
 	discovery    *MerchantDiscovery
 	indexBuilder *IndexBuilder
+	fulfiller    *Fulfiller
 }
 
 var _ extension.Extension = (*Extension)(nil)
@@ -89,6 +91,7 @@ func New(
 		searcher:     NewSearcher(httpClient, offerIssuer),
 		discovery:    NewMerchantDiscovery(repository),
 		indexBuilder: NewIndexBuilder(httpClient),
+		fulfiller:    NewFulfiller(httpClient),
 	}
 }
 
@@ -110,4 +113,8 @@ func (e *Extension) IndexBuilder() discovery.DomainIndexBuilder {
 
 func (e *Extension) OfferVerifier() offer.Verifier {
 	return e.searcher
+}
+
+func (e *Extension) Fulfiller() fulfillment.DomainFulfiller {
+	return e.fulfiller
 }

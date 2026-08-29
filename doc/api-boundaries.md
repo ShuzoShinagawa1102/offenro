@@ -23,4 +23,6 @@ Agent API:          offer_id
 - 検索候補そのものはDBへ保存しない。
 - Cart追加後は`offer_id`と`merchant_offer_ref`を別Columnとして保持する。
 
+Merchant Live APIの注文・予約作成は`Idempotency-Key`を必須とし、同じキーから結果を取得する照会APIもDomain Contractに定義する。OffenroはMerchantへ送信する前にキーを永続化し、応答が不明な場合は照会してから同じキーで安全に再送する。
+
 Management APIは認証なしで公開しない。今回のPrototypeでは環境変数による管理Tokenで保護し、Merchant自身のAccount・API Key管理は後工程とする。

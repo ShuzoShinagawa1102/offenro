@@ -8,6 +8,7 @@ Repositoryは、Coreが必要とするデータ操作を表すinterfaceである
 internal/core                         # Repositoryの契約（Port）
 ├── cart.CartStore / PurchaseReader
 ├── discovery.IndexRepository
+├── fulfillment.Repository
 ├── merchant.Registry / ManagementRepository
 └── offer.Codec / VerifierRegistry
           │
@@ -28,17 +29,18 @@ internal/core                         # Repositoryの契約（Port）
 | Domain検索・Merchant選定 | `internal/domain/{go-domain}` | Domainのテスト | `internal/core` |
 | 新Domain追加 | `api/domains`、`internal/codegen/domains`、`internal/domain` | `internal/platform/domainapi`、`cmd/server/main.go` | 既存Domainの生成物 |
 | Cart・Purchase API | `api/protocol` | `internal/core/cart`、`internal/platform/protocolapi` | `internal/generated/protocol` |
+| Merchant注文・予約 | `api/protocol`、`api/domains/{api-domain}` | `internal/core/fulfillment`、Domainの`fulfiller.go`、`internal/platform/protocolapi` | 生成コード |
 | Merchant管理API | `api/management` | `internal/core/merchant`、`internal/platform/managementapi` | `internal/generated/management` |
 | Offer ID／再確認 | `api/domains/{api-domain}` | `internal/core/offer`、Domainの`searcher.go`、`internal/platform/offertoken` | Domain生成物 |
 | Coreユースケース | `internal/core/{feature}` | 対応するPlatform Adapterとテスト | Domain生成モデル |
-| DB Schema | `db/migrations` | `db/queries`、PostgreSQL Adapter | sqlc生成物 |
+| DB Schema | `doc/database-model.md`、`db/migrations` | `db/queries`、Coreモデル、PostgreSQL Adapter | sqlc生成物 |
 | SQL Query | `db/queries` | `internal/platform/postgres`の変換処理 | Goコード内のSQL、sqlc生成物 |
 | 共有テストFake | `internal/testutil` | 利用側の`*_test.go` | 本番Composition Root |
 
 ## ファイルを分ける基準
 
 - Coreは`cart`、`merchant`、`offer`、`search`、`discovery`等のユースケース・Protocol概念単位でpackageを分ける。
-- Domainの手書き実装は`extension.go`、`searcher.go`、`discovery.go`、`index_builder.go`を基本単位とする。
+- Domainの手書き実装は`extension.go`、`searcher.go`、`fulfiller.go`、`discovery.go`、`index_builder.go`を基本単位とする。
 - HTTP、PostgreSQL等の技術実装は`internal/platform`へ置く。
 - Unit Testは対象コードと同じpackageの`*_test.go`へ置く。
 - 複数packageで共有するテスト実装だけを`internal/testutil`へ置く。

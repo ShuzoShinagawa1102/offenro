@@ -15,6 +15,7 @@
 | Checkout | あり | Transactionあり | Revalidateあり | あり |
 | Purchase／PurchaseItem | あり | 生成・取得あり | あり | 取得あり |
 | Checkout時Offer再確認 | 参照値を保存 | あり | あり | Merchant Contractあり |
+| Merchant注文・予約 | MerchantFulfillmentあり | 冪等準備・状態更新あり | Domain別adapterあり | Confirm APIあり |
 | Payment／Stripe | Schemaのみ | 未実装 | 未実装 | 未実装 |
 
 Management APIはPrototype用Bearer Tokenで保護する。Agent APIの認証、Merchantごとの認証情報管理、管理画面は未実装である。
@@ -33,15 +34,17 @@ Search
 → Offer Revalidate
 → Purchase CREATED
 → Cart CHECKED_OUT
+→ Merchant注文・予約
+→ Purchase CONFIRMED
 ```
 
-`Purchase.CONFIRMED`、Payment処理、Stripe接続、Dashboardは今回の実装対象外とする。
+`Purchase.CONFIRMED`は、全Purchase Itemに対応するMerchant注文・予約が成立した場合だけ設定する。Payment処理、Stripe接続、Dashboardは未実装である。
 
 Checkoutでは検索時の`offer_id`から内部の`merchant_offer_ref`を解決し、Merchant Live APIへ再確認する。Offer失効、価格・通貨変更時は409を返し、Cartは`ACTIVE`のまま維持する。外部通信障害は502とする。
 
 ## 次の実装単位
 
-- Merchant側の注文・予約作成と`Purchase.CONFIRMED`遷移
+- [購入フローStatus管理表](status-transitions.md)
 - Payment Use Case、Stripe PaymentIntent、署名検証済みWebhook
 - Management APIのMerchant単位認可とSecret管理
 - Dashboard向けRead Model／専用Query

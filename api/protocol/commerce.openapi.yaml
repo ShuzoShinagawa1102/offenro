@@ -174,6 +174,38 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /v1/purchases/{purchase_id}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/PurchaseID"
+    post:
+      operationId: confirmPurchase
+      summary: Create Merchant orders or reservations and confirm a Purchase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/ConfirmPurchaseRequest"
+      responses:
+        "200":
+          description: Merchant confirmation reached a terminal state
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/Purchase"
+        "202":
+          description: Merchant confirmation requires retry or reconciliation
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/Purchase"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
 components:
   parameters:
     CartID:

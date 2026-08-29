@@ -14,10 +14,22 @@ import (
 	"strings"
 
 	externalRef0 "github.com/ShuzoShinagawa1102/offenro/internal/domain/travelhotel/generated/model"
+	"github.com/oapi-codegen/runtime"
 )
+
+// IdempotencyKey defines model for IdempotencyKey.
+type IdempotencyKey = string
+
+// CreateTravelHotelReservationParams defines parameters for CreateTravelHotelReservation.
+type CreateTravelHotelReservationParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
 
 // RevalidateTravelHotelOfferJSONRequestBody defines body for RevalidateTravelHotelOffer for application/json ContentType.
 type RevalidateTravelHotelOfferJSONRequestBody = externalRef0.TravelHotelRevalidateRequest
+
+// CreateTravelHotelReservationJSONRequestBody defines body for CreateTravelHotelReservation for application/json ContentType.
+type CreateTravelHotelReservationJSONRequestBody = externalRef0.TravelHotelReservationRequest
 
 // SearchTravelHotelOffersJSONRequestBody defines body for SearchTravelHotelOffers for application/json ContentType.
 type SearchTravelHotelOffersJSONRequestBody = externalRef0.TravelHotelSearchRequest
@@ -115,6 +127,25 @@ type ClientInterface interface {
 	// Corresponds with POST /travel/hotel/offers/revalidate (the `RevalidateTravelHotelOffer` operationId).
 	RevalidateTravelHotelOffer(ctx context.Context, body RevalidateTravelHotelOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateTravelHotelReservationWithBody Create an idempotent hotel reservation
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /travel/hotel/reservations (the `CreateTravelHotelReservation` operationId).
+	CreateTravelHotelReservationWithBody(ctx context.Context, params *CreateTravelHotelReservationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateTravelHotelReservation Create an idempotent hotel reservation
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /travel/hotel/reservations (the `CreateTravelHotelReservation` operationId).
+	CreateTravelHotelReservation(ctx context.Context, params *CreateTravelHotelReservationParams, body CreateTravelHotelReservationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTravelHotelReservationByIdempotencyKey Resolve a reservation after an uncertain response
+	//
+	// Corresponds with GET /travel/hotel/reservations/by-idempotency-key/{idempotency_key} (the `GetTravelHotelReservationByIdempotencyKey` operationId).
+	GetTravelHotelReservationByIdempotencyKey(ctx context.Context, idempotencyKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SearchTravelHotelOffersWithBody Search current hotel offers
 	//
 	// Takes any type of body and a specified content type.
@@ -169,6 +200,55 @@ func (c *Client) RevalidateTravelHotelOfferWithBody(ctx context.Context, content
 // Corresponds with POST /travel/hotel/offers/revalidate (the `RevalidateTravelHotelOffer` operationId).
 func (c *Client) RevalidateTravelHotelOffer(ctx context.Context, body RevalidateTravelHotelOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRevalidateTravelHotelOfferRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateTravelHotelReservationWithBody Create an idempotent hotel reservation
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /travel/hotel/reservations (the `CreateTravelHotelReservation` operationId).
+func (c *Client) CreateTravelHotelReservationWithBody(ctx context.Context, params *CreateTravelHotelReservationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTravelHotelReservationRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateTravelHotelReservation Create an idempotent hotel reservation
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /travel/hotel/reservations (the `CreateTravelHotelReservation` operationId).
+func (c *Client) CreateTravelHotelReservation(ctx context.Context, params *CreateTravelHotelReservationParams, body CreateTravelHotelReservationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTravelHotelReservationRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetTravelHotelReservationByIdempotencyKey Resolve a reservation after an uncertain response
+//
+// Corresponds with GET /travel/hotel/reservations/by-idempotency-key/{idempotency_key} (the `GetTravelHotelReservationByIdempotencyKey` operationId).
+func (c *Client) GetTravelHotelReservationByIdempotencyKey(ctx context.Context, idempotencyKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTravelHotelReservationByIdempotencyKeyRequest(c.Server, idempotencyKey)
 	if err != nil {
 		return nil, err
 	}
@@ -280,6 +360,93 @@ func NewRevalidateTravelHotelOfferRequestWithBody(server string, contentType str
 	return req, nil
 }
 
+// NewCreateTravelHotelReservationRequest calls the generic CreateTravelHotelReservation builder with application/json body
+func NewCreateTravelHotelReservationRequest(server string, params *CreateTravelHotelReservationParams, body CreateTravelHotelReservationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateTravelHotelReservationRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewCreateTravelHotelReservationRequestWithBody constructs an http.Request for the CreateTravelHotelReservation method, with any body, and a specified content type
+func NewCreateTravelHotelReservationRequestWithBody(server string, params *CreateTravelHotelReservationParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/travel/hotel/reservations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetTravelHotelReservationByIdempotencyKeyRequest constructs an http.Request for the GetTravelHotelReservationByIdempotencyKey method
+func NewGetTravelHotelReservationByIdempotencyKeyRequest(server string, idempotencyKey string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "idempotency_key", idempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/travel/hotel/reservations/by-idempotency-key/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSearchTravelHotelOffersRequest calls the generic SearchTravelHotelOffers builder with application/json body
 func NewSearchTravelHotelOffersRequest(server string, body SearchTravelHotelOffersJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -385,6 +552,27 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /travel/hotel/offers/revalidate (the `RevalidateTravelHotelOffer` operationId).
 	RevalidateTravelHotelOfferWithResponse(ctx context.Context, body RevalidateTravelHotelOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*RevalidateTravelHotelOfferResponse, error)
 
+	// CreateTravelHotelReservationWithBodyWithResponse Create an idempotent hotel reservation
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /travel/hotel/reservations (the `CreateTravelHotelReservation` operationId).
+	CreateTravelHotelReservationWithBodyWithResponse(ctx context.Context, params *CreateTravelHotelReservationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTravelHotelReservationResponse, error)
+
+	// CreateTravelHotelReservationWithResponse Create an idempotent hotel reservation
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /travel/hotel/reservations (the `CreateTravelHotelReservation` operationId).
+	CreateTravelHotelReservationWithResponse(ctx context.Context, params *CreateTravelHotelReservationParams, body CreateTravelHotelReservationJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTravelHotelReservationResponse, error)
+
+	// GetTravelHotelReservationByIdempotencyKeyWithResponse Resolve a reservation after an uncertain response
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /travel/hotel/reservations/by-idempotency-key/{idempotency_key} (the `GetTravelHotelReservationByIdempotencyKey` operationId).
+	GetTravelHotelReservationByIdempotencyKeyWithResponse(ctx context.Context, idempotencyKey string, reqEditors ...RequestEditorFn) (*GetTravelHotelReservationByIdempotencyKeyResponse, error)
+
 	// SearchTravelHotelOffersWithBodyWithResponse Search current hotel offers
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -482,6 +670,102 @@ func (r RevalidateTravelHotelOfferResponse) ContentType() string {
 	return ""
 }
 
+type CreateTravelHotelReservationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *externalRef0.TravelHotelReservationResult
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *externalRef0.TravelHotelReservationResult
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *externalRef0.TravelHotelReservationResult
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateTravelHotelReservationResponse) GetJSON200() *externalRef0.TravelHotelReservationResult {
+	return r.JSON200
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateTravelHotelReservationResponse) GetJSON201() *externalRef0.TravelHotelReservationResult {
+	return r.JSON201
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateTravelHotelReservationResponse) GetJSON409() *externalRef0.TravelHotelReservationResult {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateTravelHotelReservationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTravelHotelReservationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTravelHotelReservationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTravelHotelReservationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetTravelHotelReservationByIdempotencyKeyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *externalRef0.TravelHotelReservationResult
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetTravelHotelReservationByIdempotencyKeyResponse) GetJSON200() *externalRef0.TravelHotelReservationResult {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetTravelHotelReservationByIdempotencyKeyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTravelHotelReservationByIdempotencyKeyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTravelHotelReservationByIdempotencyKeyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTravelHotelReservationByIdempotencyKeyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type SearchTravelHotelOffersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -562,6 +846,45 @@ func (c *ClientWithResponses) RevalidateTravelHotelOfferWithResponse(ctx context
 	return ParseRevalidateTravelHotelOfferResponse(rsp)
 }
 
+// CreateTravelHotelReservationWithBodyWithResponse Create an idempotent hotel reservation
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /travel/hotel/reservations (the `CreateTravelHotelReservation` operationId).
+func (c *ClientWithResponses) CreateTravelHotelReservationWithBodyWithResponse(ctx context.Context, params *CreateTravelHotelReservationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTravelHotelReservationResponse, error) {
+	rsp, err := c.CreateTravelHotelReservationWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTravelHotelReservationResponse(rsp)
+}
+
+// CreateTravelHotelReservationWithResponse Create an idempotent hotel reservation
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /travel/hotel/reservations (the `CreateTravelHotelReservation` operationId).
+func (c *ClientWithResponses) CreateTravelHotelReservationWithResponse(ctx context.Context, params *CreateTravelHotelReservationParams, body CreateTravelHotelReservationJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTravelHotelReservationResponse, error) {
+	rsp, err := c.CreateTravelHotelReservation(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTravelHotelReservationResponse(rsp)
+}
+
+// GetTravelHotelReservationByIdempotencyKeyWithResponse Resolve a reservation after an uncertain response
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /travel/hotel/reservations/by-idempotency-key/{idempotency_key} (the `GetTravelHotelReservationByIdempotencyKey` operationId).
+func (c *ClientWithResponses) GetTravelHotelReservationByIdempotencyKeyWithResponse(ctx context.Context, idempotencyKey string, reqEditors ...RequestEditorFn) (*GetTravelHotelReservationByIdempotencyKeyResponse, error) {
+	rsp, err := c.GetTravelHotelReservationByIdempotencyKey(ctx, idempotencyKey, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTravelHotelReservationByIdempotencyKeyResponse(rsp)
+}
+
 // SearchTravelHotelOffersWithBodyWithResponse Search current hotel offers
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -630,6 +953,75 @@ func ParseRevalidateTravelHotelOfferResponse(rsp *http.Response) (*RevalidateTra
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest externalRef0.TravelHotelRevalidateResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateTravelHotelReservationResponse parses an HTTP response from a CreateTravelHotelReservationWithResponse call
+func ParseCreateTravelHotelReservationResponse(rsp *http.Response) (*CreateTravelHotelReservationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTravelHotelReservationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.TravelHotelReservationResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest externalRef0.TravelHotelReservationResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest externalRef0.TravelHotelReservationResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTravelHotelReservationByIdempotencyKeyResponse parses an HTTP response from a GetTravelHotelReservationByIdempotencyKeyWithResponse call
+func ParseGetTravelHotelReservationByIdempotencyKeyResponse(rsp *http.Response) (*GetTravelHotelReservationByIdempotencyKeyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTravelHotelReservationByIdempotencyKeyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.TravelHotelReservationResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

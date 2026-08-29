@@ -14,10 +14,22 @@ import (
 	"strings"
 
 	externalRef0 "github.com/ShuzoShinagawa1102/offenro/internal/domain/retailshoes/generated/model"
+	"github.com/oapi-codegen/runtime"
 )
+
+// IdempotencyKey defines model for IdempotencyKey.
+type IdempotencyKey = string
+
+// CreateRetailShoesOrderParams defines parameters for CreateRetailShoesOrder.
+type CreateRetailShoesOrderParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
 
 // RevalidateRetailShoesOfferJSONRequestBody defines body for RevalidateRetailShoesOffer for application/json ContentType.
 type RevalidateRetailShoesOfferJSONRequestBody = externalRef0.RetailShoesRevalidateRequest
+
+// CreateRetailShoesOrderJSONRequestBody defines body for CreateRetailShoesOrder for application/json ContentType.
+type CreateRetailShoesOrderJSONRequestBody = externalRef0.RetailShoesOrderRequest
 
 // SearchRetailShoesOffersJSONRequestBody defines body for SearchRetailShoesOffers for application/json ContentType.
 type SearchRetailShoesOffersJSONRequestBody = externalRef0.RetailShoesSearchRequest
@@ -115,6 +127,25 @@ type ClientInterface interface {
 	// Corresponds with POST /retail/shoes/offers/revalidate (the `RevalidateRetailShoesOffer` operationId).
 	RevalidateRetailShoesOffer(ctx context.Context, body RevalidateRetailShoesOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateRetailShoesOrderWithBody Create an idempotent shoe order
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /retail/shoes/orders (the `CreateRetailShoesOrder` operationId).
+	CreateRetailShoesOrderWithBody(ctx context.Context, params *CreateRetailShoesOrderParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateRetailShoesOrder Create an idempotent shoe order
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /retail/shoes/orders (the `CreateRetailShoesOrder` operationId).
+	CreateRetailShoesOrder(ctx context.Context, params *CreateRetailShoesOrderParams, body CreateRetailShoesOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRetailShoesOrderByIdempotencyKey Resolve an order after an uncertain response
+	//
+	// Corresponds with GET /retail/shoes/orders/by-idempotency-key/{idempotency_key} (the `GetRetailShoesOrderByIdempotencyKey` operationId).
+	GetRetailShoesOrderByIdempotencyKey(ctx context.Context, idempotencyKey string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SearchRetailShoesOffersWithBody Search current shoe offers
 	//
 	// Takes any type of body and a specified content type.
@@ -169,6 +200,55 @@ func (c *Client) RevalidateRetailShoesOfferWithBody(ctx context.Context, content
 // Corresponds with POST /retail/shoes/offers/revalidate (the `RevalidateRetailShoesOffer` operationId).
 func (c *Client) RevalidateRetailShoesOffer(ctx context.Context, body RevalidateRetailShoesOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRevalidateRetailShoesOfferRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateRetailShoesOrderWithBody Create an idempotent shoe order
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /retail/shoes/orders (the `CreateRetailShoesOrder` operationId).
+func (c *Client) CreateRetailShoesOrderWithBody(ctx context.Context, params *CreateRetailShoesOrderParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRetailShoesOrderRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateRetailShoesOrder Create an idempotent shoe order
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /retail/shoes/orders (the `CreateRetailShoesOrder` operationId).
+func (c *Client) CreateRetailShoesOrder(ctx context.Context, params *CreateRetailShoesOrderParams, body CreateRetailShoesOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRetailShoesOrderRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetRetailShoesOrderByIdempotencyKey Resolve an order after an uncertain response
+//
+// Corresponds with GET /retail/shoes/orders/by-idempotency-key/{idempotency_key} (the `GetRetailShoesOrderByIdempotencyKey` operationId).
+func (c *Client) GetRetailShoesOrderByIdempotencyKey(ctx context.Context, idempotencyKey string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRetailShoesOrderByIdempotencyKeyRequest(c.Server, idempotencyKey)
 	if err != nil {
 		return nil, err
 	}
@@ -280,6 +360,93 @@ func NewRevalidateRetailShoesOfferRequestWithBody(server string, contentType str
 	return req, nil
 }
 
+// NewCreateRetailShoesOrderRequest calls the generic CreateRetailShoesOrder builder with application/json body
+func NewCreateRetailShoesOrderRequest(server string, params *CreateRetailShoesOrderParams, body CreateRetailShoesOrderJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateRetailShoesOrderRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewCreateRetailShoesOrderRequestWithBody constructs an http.Request for the CreateRetailShoesOrder method, with any body, and a specified content type
+func NewCreateRetailShoesOrderRequestWithBody(server string, params *CreateRetailShoesOrderParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/retail/shoes/orders")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetRetailShoesOrderByIdempotencyKeyRequest constructs an http.Request for the GetRetailShoesOrderByIdempotencyKey method
+func NewGetRetailShoesOrderByIdempotencyKeyRequest(server string, idempotencyKey string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "idempotency_key", idempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/retail/shoes/orders/by-idempotency-key/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSearchRetailShoesOffersRequest calls the generic SearchRetailShoesOffers builder with application/json body
 func NewSearchRetailShoesOffersRequest(server string, body SearchRetailShoesOffersJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -385,6 +552,27 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /retail/shoes/offers/revalidate (the `RevalidateRetailShoesOffer` operationId).
 	RevalidateRetailShoesOfferWithResponse(ctx context.Context, body RevalidateRetailShoesOfferJSONRequestBody, reqEditors ...RequestEditorFn) (*RevalidateRetailShoesOfferResponse, error)
 
+	// CreateRetailShoesOrderWithBodyWithResponse Create an idempotent shoe order
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /retail/shoes/orders (the `CreateRetailShoesOrder` operationId).
+	CreateRetailShoesOrderWithBodyWithResponse(ctx context.Context, params *CreateRetailShoesOrderParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRetailShoesOrderResponse, error)
+
+	// CreateRetailShoesOrderWithResponse Create an idempotent shoe order
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /retail/shoes/orders (the `CreateRetailShoesOrder` operationId).
+	CreateRetailShoesOrderWithResponse(ctx context.Context, params *CreateRetailShoesOrderParams, body CreateRetailShoesOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRetailShoesOrderResponse, error)
+
+	// GetRetailShoesOrderByIdempotencyKeyWithResponse Resolve an order after an uncertain response
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /retail/shoes/orders/by-idempotency-key/{idempotency_key} (the `GetRetailShoesOrderByIdempotencyKey` operationId).
+	GetRetailShoesOrderByIdempotencyKeyWithResponse(ctx context.Context, idempotencyKey string, reqEditors ...RequestEditorFn) (*GetRetailShoesOrderByIdempotencyKeyResponse, error)
+
 	// SearchRetailShoesOffersWithBodyWithResponse Search current shoe offers
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -482,6 +670,102 @@ func (r RevalidateRetailShoesOfferResponse) ContentType() string {
 	return ""
 }
 
+type CreateRetailShoesOrderResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *externalRef0.RetailShoesOrderResult
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *externalRef0.RetailShoesOrderResult
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *externalRef0.RetailShoesOrderResult
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateRetailShoesOrderResponse) GetJSON200() *externalRef0.RetailShoesOrderResult {
+	return r.JSON200
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateRetailShoesOrderResponse) GetJSON201() *externalRef0.RetailShoesOrderResult {
+	return r.JSON201
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r CreateRetailShoesOrderResponse) GetJSON409() *externalRef0.RetailShoesOrderResult {
+	return r.JSON409
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateRetailShoesOrderResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateRetailShoesOrderResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateRetailShoesOrderResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateRetailShoesOrderResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetRetailShoesOrderByIdempotencyKeyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *externalRef0.RetailShoesOrderResult
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetRetailShoesOrderByIdempotencyKeyResponse) GetJSON200() *externalRef0.RetailShoesOrderResult {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetRetailShoesOrderByIdempotencyKeyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRetailShoesOrderByIdempotencyKeyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRetailShoesOrderByIdempotencyKeyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRetailShoesOrderByIdempotencyKeyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type SearchRetailShoesOffersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -562,6 +846,45 @@ func (c *ClientWithResponses) RevalidateRetailShoesOfferWithResponse(ctx context
 	return ParseRevalidateRetailShoesOfferResponse(rsp)
 }
 
+// CreateRetailShoesOrderWithBodyWithResponse Create an idempotent shoe order
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /retail/shoes/orders (the `CreateRetailShoesOrder` operationId).
+func (c *ClientWithResponses) CreateRetailShoesOrderWithBodyWithResponse(ctx context.Context, params *CreateRetailShoesOrderParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRetailShoesOrderResponse, error) {
+	rsp, err := c.CreateRetailShoesOrderWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRetailShoesOrderResponse(rsp)
+}
+
+// CreateRetailShoesOrderWithResponse Create an idempotent shoe order
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /retail/shoes/orders (the `CreateRetailShoesOrder` operationId).
+func (c *ClientWithResponses) CreateRetailShoesOrderWithResponse(ctx context.Context, params *CreateRetailShoesOrderParams, body CreateRetailShoesOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRetailShoesOrderResponse, error) {
+	rsp, err := c.CreateRetailShoesOrder(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRetailShoesOrderResponse(rsp)
+}
+
+// GetRetailShoesOrderByIdempotencyKeyWithResponse Resolve an order after an uncertain response
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /retail/shoes/orders/by-idempotency-key/{idempotency_key} (the `GetRetailShoesOrderByIdempotencyKey` operationId).
+func (c *ClientWithResponses) GetRetailShoesOrderByIdempotencyKeyWithResponse(ctx context.Context, idempotencyKey string, reqEditors ...RequestEditorFn) (*GetRetailShoesOrderByIdempotencyKeyResponse, error) {
+	rsp, err := c.GetRetailShoesOrderByIdempotencyKey(ctx, idempotencyKey, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRetailShoesOrderByIdempotencyKeyResponse(rsp)
+}
+
 // SearchRetailShoesOffersWithBodyWithResponse Search current shoe offers
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
@@ -630,6 +953,75 @@ func ParseRevalidateRetailShoesOfferResponse(rsp *http.Response) (*RevalidateRet
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest externalRef0.RetailShoesRevalidateResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateRetailShoesOrderResponse parses an HTTP response from a CreateRetailShoesOrderWithResponse call
+func ParseCreateRetailShoesOrderResponse(rsp *http.Response) (*CreateRetailShoesOrderResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateRetailShoesOrderResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.RetailShoesOrderResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest externalRef0.RetailShoesOrderResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest externalRef0.RetailShoesOrderResult
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRetailShoesOrderByIdempotencyKeyResponse parses an HTTP response from a GetRetailShoesOrderByIdempotencyKeyWithResponse call
+func ParseGetRetailShoesOrderByIdempotencyKeyResponse(rsp *http.Response) (*GetRetailShoesOrderByIdempotencyKeyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRetailShoesOrderByIdempotencyKeyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest externalRef0.RetailShoesOrderResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

@@ -50,6 +50,9 @@ type AddCartItemJSONRequestBody = externalRef1.AddCartItemRequest
 // UpdateCartItemJSONRequestBody defines body for UpdateCartItem for application/json ContentType.
 type UpdateCartItemJSONRequestBody = externalRef1.UpdateCartItemRequest
 
+// ConfirmPurchaseJSONRequestBody defines body for ConfirmPurchase for application/json ContentType.
+type ConfirmPurchaseJSONRequestBody = externalRef1.ConfirmPurchaseRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// CreateCart Create a cart
@@ -79,6 +82,9 @@ type ServerInterface interface {
 	// GetPurchase Get a purchase
 	// (GET /v1/purchases/{purchase_id})
 	GetPurchase(w http.ResponseWriter, r *http.Request, purchaseId PurchaseID)
+	// ConfirmPurchase Create Merchant orders or reservations and confirm a Purchase
+	// (POST /v1/purchases/{purchase_id}/confirm)
+	ConfirmPurchase(w http.ResponseWriter, r *http.Request, purchaseId PurchaseID)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -330,6 +336,32 @@ func (siw *ServerInterfaceWrapper) GetPurchase(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// ConfirmPurchase operation middleware
+func (siw *ServerInterfaceWrapper) ConfirmPurchase(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "purchase_id" -------------
+	var purchaseId PurchaseID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "purchase_id", r.PathValue("purchase_id"), &purchaseId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "purchase_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ConfirmPurchase(w, r, purchaseId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -459,6 +491,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/carts/{cart_id}/items/{item_id}", wrapper.UpdateCartItem)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/carts/{cart_id}/checkout", wrapper.CheckoutCart)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/purchases/{purchase_id}", wrapper.GetPurchase)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/purchases/{purchase_id}/confirm", wrapper.ConfirmPurchase)
 
 	return m
 }
@@ -942,6 +975,85 @@ func (response GetPurchase404JSONResponse) VisitGetPurchaseResponse(w http.Respo
 	return err
 }
 
+type ConfirmPurchaseRequestObject struct {
+	PurchaseId PurchaseID `json:"purchase_id"`
+	Body       *ConfirmPurchaseJSONRequestBody
+}
+
+type ConfirmPurchaseResponseObject interface {
+	VisitConfirmPurchaseResponse(w http.ResponseWriter) error
+}
+
+type ConfirmPurchase200JSONResponse externalRef1.Purchase
+
+func (response ConfirmPurchase200JSONResponse) VisitConfirmPurchaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmPurchase202JSONResponse externalRef1.Purchase
+
+func (response ConfirmPurchase202JSONResponse) VisitConfirmPurchaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmPurchase400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ConfirmPurchase400JSONResponse) VisitConfirmPurchaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmPurchase404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ConfirmPurchase404JSONResponse) VisitConfirmPurchaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmPurchase409JSONResponse struct{ ConflictJSONResponse }
+
+func (response ConfirmPurchase409JSONResponse) VisitConfirmPurchaseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// CreateCart Create a cart
@@ -971,6 +1083,9 @@ type StrictServerInterface interface {
 	// GetPurchase Get a purchase
 	// (GET /v1/purchases/{purchase_id})
 	GetPurchase(ctx context.Context, request GetPurchaseRequestObject) (GetPurchaseResponseObject, error)
+	// ConfirmPurchase Create Merchant orders or reservations and confirm a Purchase
+	// (POST /v1/purchases/{purchase_id}/confirm)
+	ConfirmPurchase(ctx context.Context, request ConfirmPurchaseRequestObject) (ConfirmPurchaseResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -1267,6 +1382,39 @@ func (sh *strictHandler) GetPurchase(w http.ResponseWriter, r *http.Request, pur
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetPurchaseResponseObject); ok {
 		if err := validResponse.VisitGetPurchaseResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ConfirmPurchase operation middleware
+func (sh *strictHandler) ConfirmPurchase(w http.ResponseWriter, r *http.Request, purchaseId PurchaseID) {
+	var request ConfirmPurchaseRequestObject
+
+	request.PurchaseId = purchaseId
+
+	var body ConfirmPurchaseJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ConfirmPurchase(ctx, request.(ConfirmPurchaseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ConfirmPurchase")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ConfirmPurchaseResponseObject); ok {
+		if err := validResponse.VisitConfirmPurchaseResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

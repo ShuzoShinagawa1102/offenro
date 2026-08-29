@@ -165,3 +165,47 @@ components:
       properties:
         offer:
           $ref: "#/components/schemas/RetailShoesMerchantOffer"
+
+    RetailShoesDeliveryDetails:
+      type: object
+      required: [recipient_name, country_code, postal_code, address_line1]
+      properties:
+        recipient_name:
+          type: string
+        country_code:
+          type: string
+          minLength: 2
+          maxLength: 2
+        postal_code:
+          type: string
+        address_line1:
+          type: string
+        address_line2:
+          type: string
+
+    RetailShoesOrderRequest:
+      type: object
+      required: [merchant_offer_ref, purchase_id, purchase_item_id, buyer_ref, details]
+      properties:
+        merchant_offer_ref:
+          type: string
+        purchase_id:
+          type: string
+        purchase_item_id:
+          type: string
+        buyer_ref:
+          type: string
+        details:
+          $ref: "#/components/schemas/RetailShoesDeliveryDetails"
+
+    RetailShoesOrderResult:
+      type: object
+      required: [merchant_order_ref, status]
+      properties:
+        merchant_order_ref:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, REJECTED]
+        failure_code:
+          type: string

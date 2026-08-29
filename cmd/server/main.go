@@ -11,6 +11,7 @@ import (
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/cart"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/discovery"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/extension"
+	"github.com/ShuzoShinagawa1102/offenro/internal/core/fulfillment"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/merchant"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/search"
 	"github.com/ShuzoShinagawa1102/offenro/internal/domain/retailshoes"
@@ -82,11 +83,12 @@ func main() {
 		domainRegistry,
 	)
 	managementService := merchant.NewManagementService(store, domainRegistry)
+	fulfillmentService := fulfillment.NewService(store, merchantRegistry, domainRegistry)
 
 	// 新しいDomainのDomain API Handlerもこの一覧へ追加する。
 	routeMounters := []httpserver.RouteMounter{
 		managementapi.New(managementService, managementToken),
-		protocolapi.New(cartService),
+		protocolapi.New(cartService, fulfillmentService),
 		travelhotelapi.New(searchService),
 		retailshoesapi.New(searchService),
 	}

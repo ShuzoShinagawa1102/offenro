@@ -15,7 +15,7 @@ VALUES (
     sqlc.arg(agent_id),
     sqlc.arg(buyer_ref),
     sqlc.arg(status),
-    sqlc.arg(total_amount)::BIGINT,
+    sqlc.arg(total_amount),
     sqlc.arg(currency),
     sqlc.arg(purchased_at)
 );
@@ -38,7 +38,7 @@ VALUES (
     sqlc.arg(offer_id),
     sqlc.arg(merchant_offer_ref),
     sqlc.arg(offer_snapshot),
-    sqlc.arg(amount)::BIGINT,
+    sqlc.arg(amount),
     sqlc.arg(currency)
 );
 
@@ -49,7 +49,7 @@ SELECT
     agent_id,
     buyer_ref,
     status,
-    total_amount::BIGINT AS total_amount,
+    total_amount,
     currency,
     purchased_at
 FROM purchase
@@ -65,7 +65,7 @@ SELECT
     item.offer_id,
     item.merchant_offer_ref,
     item.offer_snapshot,
-    item.amount::BIGINT AS amount,
+    item.amount,
     item.currency
 FROM purchase_item AS item
 JOIN merchant_capability AS capability

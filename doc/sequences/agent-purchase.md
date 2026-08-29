@@ -41,9 +41,23 @@ sequenceDiagram
         Offenro-->>Agent: 409 Conflict
         Note over Offenro,DB: CartはACTIVEのまま
     end
+
+    Agent->>Offenro: POST /v1/purchases/{id}/confirm
+    Offenro->>DB: ItemごとにFulfillment PENDING＋冪等キーを保存
+    loop Purchase Item
+        Offenro->>Merchant: 注文・予約作成（冪等キー）
+        Merchant-->>Offenro: CONFIRMED／REJECTED／結果不明
+        Offenro->>DB: Fulfillment状態を更新
+    end
+    alt 全FulfillmentがCONFIRMED
+        Offenro->>DB: Purchase CONFIRMED
+        Offenro-->>Agent: 200 Purchase CONFIRMED
+    else PENDING／UNKNOWN／一部失敗
+        Offenro-->>Agent: 202 Purchase CREATED
+    end
 ```
 
-`Purchase.CREATED`はMerchant側の注文・予約成立を意味しない。`Purchase.CONFIRMED`は後工程でMerchant注文が成立した時点にだけ設定する。
+`Purchase.CREATED`はMerchant側の注文・予約成立を意味しない。`Purchase.CONFIRMED`は全Purchase ItemのMerchant注文が成立した時点にだけ設定する。結果不明時は同じ冪等キーでMerchantの状態を照会し、二重注文を防ぐ。
 
 ## 次工程のStripe決済
 

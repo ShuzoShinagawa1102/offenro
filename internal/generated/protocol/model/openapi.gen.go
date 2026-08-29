@@ -54,21 +54,45 @@ func (e CartStatus) Valid() bool {
 	}
 }
 
+// Defines values for MerchantFulfillmentStatus.
+const (
+	MerchantFulfillmentStatusCONFIRMED MerchantFulfillmentStatus = "CONFIRMED"
+	MerchantFulfillmentStatusPENDING   MerchantFulfillmentStatus = "PENDING"
+	MerchantFulfillmentStatusREJECTED  MerchantFulfillmentStatus = "REJECTED"
+	MerchantFulfillmentStatusUNKNOWN   MerchantFulfillmentStatus = "UNKNOWN"
+)
+
+// Valid indicates whether the value is a known member of the MerchantFulfillmentStatus enum.
+func (e MerchantFulfillmentStatus) Valid() bool {
+	switch e {
+	case MerchantFulfillmentStatusCONFIRMED:
+		return true
+	case MerchantFulfillmentStatusPENDING:
+		return true
+	case MerchantFulfillmentStatusREJECTED:
+		return true
+	case MerchantFulfillmentStatusUNKNOWN:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PurchaseStatus.
 const (
-	CANCELLED PurchaseStatus = "CANCELLED"
-	CONFIRMED PurchaseStatus = "CONFIRMED"
-	CREATED   PurchaseStatus = "CREATED"
+	PurchaseStatusCANCELLED PurchaseStatus = "CANCELLED"
+	PurchaseStatusCONFIRMED PurchaseStatus = "CONFIRMED"
+	PurchaseStatusCREATED   PurchaseStatus = "CREATED"
 )
 
 // Valid indicates whether the value is a known member of the PurchaseStatus enum.
 func (e PurchaseStatus) Valid() bool {
 	switch e {
-	case CANCELLED:
+	case PurchaseStatusCANCELLED:
 		return true
-	case CONFIRMED:
+	case PurchaseStatusCONFIRMED:
 		return true
-	case CREATED:
+	case PurchaseStatusCREATED:
 		return true
 	default:
 		return false
@@ -119,11 +143,33 @@ type CartItemStatus string
 // CartStatus defines model for CartStatus.
 type CartStatus string
 
+// ConfirmPurchaseRequest defines model for ConfirmPurchaseRequest.
+type ConfirmPurchaseRequest struct {
+	FulfillmentInputs *[]FulfillmentInput `json:"fulfillment_inputs,omitempty"`
+}
+
 // CreateCartRequest defines model for CreateCartRequest.
 type CreateCartRequest struct {
 	AgentId  string `json:"agent_id"`
 	BuyerRef string `json:"buyer_ref"`
 }
+
+// FulfillmentInput defines model for FulfillmentInput.
+type FulfillmentInput struct {
+	Details        map[string]interface{} `json:"details"`
+	PurchaseItemId string                 `json:"purchase_item_id"`
+}
+
+// MerchantFulfillment defines model for MerchantFulfillment.
+type MerchantFulfillment struct {
+	FailureCode    *string                   `json:"failure_code,omitempty"`
+	FulfillmentId  string                    `json:"fulfillment_id"`
+	PurchaseItemId string                    `json:"purchase_item_id"`
+	Status         MerchantFulfillmentStatus `json:"status"`
+}
+
+// MerchantFulfillmentStatus defines model for MerchantFulfillmentStatus.
+type MerchantFulfillmentStatus string
 
 // OfferSnapshot defines model for OfferSnapshot.
 type OfferSnapshot map[string]interface{}
@@ -135,12 +181,13 @@ type Purchase struct {
 	CartId   string `json:"cart_id"`
 
 	// Currency Example: JPY
-	Currency    externalRef0.Currency `json:"currency"`
-	Items       []PurchaseItem        `json:"items"`
-	PurchaseId  string                `json:"purchase_id"`
-	PurchasedAt time.Time             `json:"purchased_at"`
-	Status      PurchaseStatus        `json:"status"`
-	TotalAmount externalRef0.Amount   `json:"total_amount"`
+	Currency     externalRef0.Currency `json:"currency"`
+	Fulfillments []MerchantFulfillment `json:"fulfillments"`
+	Items        []PurchaseItem        `json:"items"`
+	PurchaseId   string                `json:"purchase_id"`
+	PurchasedAt  time.Time             `json:"purchased_at"`
+	Status       PurchaseStatus        `json:"status"`
+	TotalAmount  externalRef0.Amount   `json:"total_amount"`
 }
 
 // PurchaseItem defines model for PurchaseItem.

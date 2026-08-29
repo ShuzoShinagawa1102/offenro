@@ -20,6 +20,10 @@ components:
       type: string
       enum: [CREATED, CONFIRMED, CANCELLED]
 
+    MerchantFulfillmentStatus:
+      type: string
+      enum: [PENDING, CONFIRMED, REJECTED, UNKNOWN]
+
     OfferSnapshot:
       type: object
       additionalProperties: true
@@ -66,6 +70,24 @@ components:
         offer_expires_at:
           type: string
           format: date-time
+
+    FulfillmentInput:
+      type: object
+      required: [purchase_item_id, details]
+      properties:
+        purchase_item_id:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    ConfirmPurchaseRequest:
+      type: object
+      properties:
+        fulfillment_inputs:
+          type: array
+          items:
+            $ref: "#/components/schemas/FulfillmentInput"
 
     Cart:
       type: object
@@ -118,7 +140,7 @@ components:
     Purchase:
       type: object
       required:
-        [purchase_id, cart_id, agent_id, buyer_ref, status, items, total_amount, currency, purchased_at]
+        [purchase_id, cart_id, agent_id, buyer_ref, status, items, fulfillments, total_amount, currency, purchased_at]
       properties:
         purchase_id:
           type: string
@@ -134,6 +156,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PurchaseItem"
+        fulfillments:
+          type: array
+          items:
+            $ref: "#/components/schemas/MerchantFulfillment"
         total_amount:
           $ref: "../common/schemas.yaml#/components/schemas/Amount"
         currency:
@@ -160,3 +186,16 @@ components:
           $ref: "../common/schemas.yaml#/components/schemas/Amount"
         currency:
           $ref: "../common/schemas.yaml#/components/schemas/Currency"
+
+    MerchantFulfillment:
+      type: object
+      required: [fulfillment_id, purchase_item_id, status]
+      properties:
+        fulfillment_id:
+          type: string
+        purchase_item_id:
+          type: string
+        status:
+          $ref: "#/components/schemas/MerchantFulfillmentStatus"
+        failure_code:
+          type: string

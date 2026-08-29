@@ -1,5 +1,22 @@
 # Offenro Protocol Model / Database Schema
 
+## 文書とSchemaの管理
+
+- この文書は論理モデル、関係、状態、設計理由の基準とする。
+- `db/migrations`はPostgreSQLへ適用する物理SchemaのSource of Truthとする。
+- DB変更では、この文書、Migration、Query、Coreモデルを同じ変更で更新する。
+- 適用済みMigrationは書き換えず、差分は新しいMigrationで前進修正する。
+
+## 主要な設計判断と理由
+
+| 判断 | 理由 |
+|---|---|
+| 金額は通貨の最小単位を表す`BIGINT`で保持する | 小数・浮動小数の丸めを避け、OpenAPIとCoreの`int64`表現をDBまで一貫させるため |
+| Agent向け`offer_id`とMerchant向け`merchant_offer_ref`を分離する | Merchant内部参照値をAgentへ公開せず、OffenroがMerchant、Capability、有効期限を安全に解決するため |
+| Merchant注文・予約を`MERCHANT_FULFILLMENT`として独立させる | Merchantごとの結果や結果不明をPurchase Statusへ押し込まず、Purchase Item単位で追跡するため |
+| `MERCHANT_FULFILLMENT`は`PURCHASE_ITEM`だけを参照する | Merchant CapabilityはPurchase Itemから一意に導出でき、重複FKによる不整合を防ぐため |
+| Domain固有の予約者・配送先情報はJSON Snapshotに保持する | Protocol共通テーブルへDomain固有Columnを増やさず、OpenAPIをDomainモデルの正に保つため |
+| `purchased_at`はCheckoutによりPurchaseを生成した日時とする | `CREATED`とMerchant注文成立後の`CONFIRMED`を同一視しないため。確認日時が必要になれば別Columnとして追加する |
 
 ## ER図
 
@@ -16,6 +33,7 @@ erDiagram
 
     CART ||--o| PURCHASE : checked_out_as
     PURCHASE ||--o{ PURCHASE_ITEM : contains
+    PURCHASE_ITEM ||--o| MERCHANT_FULFILLMENT : fulfilled_as
 
     MERCHANT_CAPABILITY ||--o{ CART_ITEM : offers
     MERCHANT_CAPABILITY ||--o{ PURCHASE_ITEM : sells
@@ -87,8 +105,9 @@ erDiagram
         string cart_id FK
         string capability_id FK
         string offer_id
+        string merchant_offer_ref
         json offer_snapshot
-        int amount
+        bigint amount
         string currency
         datetime offer_expires_at
         string status
@@ -100,7 +119,7 @@ erDiagram
         string agent_id FK
         string buyer_ref
         string status
-        decimal total_amount
+        bigint total_amount
         string currency
         datetime purchased_at
     }
@@ -110,9 +129,23 @@ erDiagram
         string purchase_id FK
         string capability_id FK
         string offer_id
+        string merchant_offer_ref
         json offer_snapshot
-        decimal amount
+        bigint amount
         string currency
+    }
+
+    MERCHANT_FULFILLMENT {
+        string fulfillment_id PK
+        string purchase_item_id FK, UK
+        string status
+        string idempotency_key UK
+        string merchant_order_ref
+        json details_snapshot
+        json response_snapshot
+        string failure_code
+        datetime created_at
+        datetime updated_at
     }
 
     PAYMENT {
@@ -120,7 +153,7 @@ erDiagram
         string purchase_id FK
         string provider
         string provider_payment_id
-        decimal amount
+        bigint amount
         string currency
         string status
     }
@@ -130,7 +163,7 @@ erDiagram
         string purchase_item_id FK
         string recipient_type
         string recipient_id
-        decimal amount
+        bigint amount
         string currency
         string status
     }
@@ -139,7 +172,7 @@ erDiagram
         string transfer_id PK
         string allocation_id FK
         string provider_transfer_id
-        decimal amount
+        bigint amount
         string status
     }
 
@@ -147,7 +180,7 @@ erDiagram
         string refund_id PK
         string payment_id FK
         string provider_refund_id
-        decimal amount
+        bigint amount
         string status
     }
 ```
@@ -349,9 +382,10 @@ Cartに保存された個別Offer。
 | `cart_item_id` | Cart Item識別子 |
 | `cart_id` | 所属Cart |
 | `capability_id` | Offer提供元Merchant Capability |
-| `offer_id` | Merchant / Protocol上のOffer ID |
+| `offer_id` | Agentへ公開したOffenroのOpaque Offer ID |
+| `merchant_offer_ref` | MerchantがOfferを再特定する内部参照値。Agentへ公開しない |
 | `offer_snapshot` | Cart追加時点のOffer情報 |
-| `amount` | Checkoutに利用するOffer金額 |
+| `amount` | Checkoutに利用するOffer金額。通貨の最小単位による整数 |
 | `currency` | ISO通貨コード |
 | `offer_expires_at` | Offer有効期限 |
 | `status` | `ACTIVE` / `REMOVED` / `EXPIRED` |
@@ -362,13 +396,15 @@ Cartに保存された個別Offer。
 - `REMOVED`：Cartから除外
 - `EXPIRED`：Offer期限切れ
 
-`offer_snapshot`は参考情報であり、購入確定時にはMerchant APIで価格・在庫等を再確認する。
+`offer_snapshot`は参考情報であり、Checkout時にはMerchant APIで価格・在庫等を再確認する。
 
 ---
 
 ## PURCHASE
 
-UserがCartをCheckoutし、購入を確定した取引。
+UserがCartをCheckoutした時点の取引Snapshot。
+
+Checkout直後は`CREATED`であり、Merchant側の注文・予約成立を意味しない。
 
 PaymentやTransfer等の状態は別モデルで管理し、Purchase Statusへ集約しすぎない。
 
@@ -379,9 +415,9 @@ PaymentやTransfer等の状態は別モデルで管理し、Purchase Statusへ�
 | `agent_id` | 購入を仲介したAgent |
 | `buyer_ref` | Agent側User識別子 |
 | `status` | `CREATED` / `CONFIRMED` / `CANCELLED` |
-| `total_amount` | Purchase総額 |
+| `total_amount` | Purchase総額。通貨の最小単位による整数 |
 | `currency` | ISO通貨コード。例：`JPY` |
-| `purchased_at` | 購入確定日時 |
+| `purchased_at` | CheckoutによりPurchaseを生成した日時 |
 
 ### status
 
@@ -397,19 +433,50 @@ Payment状態やRefund状態はここには持たない。
 
 Purchaseに含まれる個別の商品・サービス。
 
-購入確定時点のOffer情報をSnapshotとして保存する。
+Checkout時点のOffer情報をSnapshotとして保存する。
 
 | Property | 内容 |
 |---|---|
 | `purchase_item_id` | Purchase Item識別子 |
 | `purchase_id` | Purchase |
 | `capability_id` | 販売したMerchant Capability |
-| `offer_id` | 元Offer |
-| `offer_snapshot` | 購入確定時点のOffer情報 |
-| `amount` | 購入金額 |
+| `offer_id` | Agentが利用したOffenroのOpaque Offer ID |
+| `merchant_offer_ref` | MerchantがOfferを再特定する内部参照値。Agentへ公開しない |
+| `offer_snapshot` | Checkout時点のOffer情報 |
+| `amount` | 購入金額。通貨の最小単位による整数 |
 | `currency` | 通貨 |
 
 `offer_snapshot`は購入後の監査・照会のため保持する。
+
+---
+
+## MERCHANT_FULFILLMENT
+
+Purchase ItemをMerchant側の注文・予約へ変換した結果を管理する。
+
+1 Purchase Itemにつき最大1件とし、Merchantへ送信する前に`PENDING`と冪等キーを保存する。Merchant Capabilityは`PURCHASE_ITEM.capability_id`から導出し、このテーブルへ重複保存しない。
+
+| Property | 内容 / 取りうる値 |
+|---|---|
+| `fulfillment_id` | Merchant Fulfillment識別子 |
+| `purchase_item_id` | 対象Purchase Item。UNIQUE |
+| `status` | `PENDING` / `CONFIRMED` / `REJECTED` / `UNKNOWN` |
+| `idempotency_key` | Merchant APIへ送る冪等キー。UNIQUE |
+| `merchant_order_ref` | Merchant側の注文・予約参照値。成立前や取得不能時はNULL |
+| `details_snapshot` | 予約者・配送先等のDomain固有Request Snapshot |
+| `response_snapshot` | Merchant Response Snapshot。応答不明時はNULL可 |
+| `failure_code` | Merchant拒否または内部判定の理由。理由がない場合はNULL |
+| `created_at` | 送信準備日時 |
+| `updated_at` | 最終状態更新日時 |
+
+### status
+
+- `PENDING`：Merchant送信前またはMerchant処理中
+- `CONFIRMED`：Merchant側の注文・予約成立
+- `REJECTED`：在庫、空室、入力条件等により不成立
+- `UNKNOWN`：Timeout等によりMerchant側の成立有無を断定できない
+
+`UNKNOWN`では同じ冪等キーを使ってMerchantへ状態照会し、未作成が確認できた場合だけ同じキーで再送する。全Purchase ItemのFulfillmentが`CONFIRMED`になった場合だけPurchaseを`CONFIRMED`へ遷移させる。
 
 ---
 
@@ -427,7 +494,7 @@ Userからの決済を管理する。
 | `purchase_id` | 対象Purchase |
 | `provider` | PSP。例：`stripe` |
 | `provider_payment_id` | PSP側Payment ID |
-| `amount` | 決済金額 |
+| `amount` | 決済金額。通貨の最小単位による整数 |
 | `currency` | 通貨 |
 | `status` | `PENDING` / `AUTHORIZED` / `CAPTURED` / `FAILED` / `CANCELLED` |
 
@@ -463,7 +530,7 @@ Protocol  =   300円
 | `purchase_item_id` | 対象Purchase Item |
 | `recipient_type` | `MERCHANT` / `AGENT` / `PROTOCOL` |
 | `recipient_id` | 配分先ID |
-| `amount` | 配分予定額 |
+| `amount` | 配分予定額。通貨の最小単位による整数 |
 | `currency` | 通貨 |
 | `status` | `PENDING` / `CONFIRMED` / `TRANSFERRED` / `REVERSED` |
 
@@ -487,7 +554,7 @@ PSPを通してMerchantやAgentへ送金する。
 | `transfer_id` | Transfer識別子 |
 | `allocation_id` | 対象Allocation |
 | `provider_transfer_id` | PSP側Transfer ID |
-| `amount` | Transfer金額 |
+| `amount` | Transfer金額。通貨の最小単位による整数 |
 | `status` | `PENDING` / `SUCCEEDED` / `FAILED` / `REVERSED` |
 
 ### status
@@ -512,7 +579,7 @@ Userへの返金を管理する。
 | `refund_id` | Refund識別子 |
 | `payment_id` | 元Payment |
 | `provider_refund_id` | PSP側Refund ID |
-| `amount` | 返金額 |
+| `amount` | 返金額。通貨の最小単位による整数 |
 | `status` | `PENDING` / `SUCCEEDED` / `FAILED` / `CANCELLED` |
 
 ### status
@@ -546,6 +613,7 @@ Merchant / Capability
 Discovery Index
 Cart
 Purchase
+Merchant Fulfillment
 Payment
 Allocation
 Transfer
@@ -589,6 +657,18 @@ ACTIVE
 CREATED
  ├─→ CONFIRMED
  └─→ CANCELLED
+```
+
+## Merchant Fulfillment
+
+```text
+PENDING
+ ├─→ CONFIRMED
+ ├─→ REJECTED
+ └─→ UNKNOWN
+       ├─→ PENDING
+       ├─→ CONFIRMED
+       └─→ REJECTED
 ```
 
 ## Payment
@@ -638,12 +718,14 @@ PENDING
 - Incentiveは原則`MerchantCapability`単位で設定する。
 - Agent上の単なる候補はProtocolへ保存しない。
 - Userが購入候補として明示的に保持した時点から`Cart`としてProtocolが管理する。
-- Cart追加時のOfferと購入確定時のOfferは異なる可能性があるため、Checkout時にMerchantへ再確認する。
-- 購入確定情報は`PurchaseItem.offer_snapshot`へ保存する。
-    - Cart追加時のOfferと購入確定時のOfferは異なる可能性があるため、Checkout時にMerchantへ再確認する。(このsnapshotoを利用)
-
+- Cart追加時のOfferとCheckout時のOfferは異なる可能性があるため、Checkout時にMerchantへ再確認する。
+- Checkout時の確定情報は`PurchaseItem.offer_snapshot`へ保存する。
+- `offer_id`と`merchant_offer_ref`を分離し、後者をAgent APIへ公開しない。
+- 金額は通貨の最小単位を表す整数で保持する。`reward_value`は割合を表せる必要があるため`NUMERIC(19, 4)`を維持する。
 - Discovery Indexへ価格・在庫等の変動情報は原則保存しない。
-- `Payment`、`Allocation`、`Transfer`、`Refund`は別々の状態を持つ。
+- `MerchantFulfillment`、`Payment`、`Allocation`、`Transfer`、`Refund`は別々の状態を持つ。
+- Merchantへの送信前にMerchant Fulfillmentと冪等キーを保存し、外部HTTP通信中はDB Transactionを保持しない。
+- Merchant CapabilityはPurchase Itemから導出し、Merchant Fulfillmentへ重複保存しない。
 - `Allocation`は資金の帰属予定、`Transfer`は実際の資金移動であり、同じ概念として扱わない。
 - Userのプロフィール等はProtocolで管理せず、Agent側Userを`buyer_ref`で参照する。
 - Domain固有の商品情報はProtocol共通テーブルの固定Columnへ展開せず、OpenAPI ContractとSnapshotで扱う。
@@ -654,7 +736,6 @@ PENDING
 
 以下は必要になった段階で別モデルとして追加する。
 
-- Fulfillment
 - Issue / Dispute
 - Merchant Payout Account
 - Authentication / API Key
@@ -662,4 +743,4 @@ PENDING
 - Incentiveの詳細条件
 - Settlement Batch
 
-特に`Fulfillment`や`Issue`は、Purchaseの`status`へ無理に統合せず、必要になった時点で独立モデルとして追加する。
+`Issue`等を追加する場合も、Purchaseの`status`へ無理に統合せず、独立したLifecycleが必要かを判断する。

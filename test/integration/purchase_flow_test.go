@@ -9,12 +9,14 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/cart"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/extension"
+	"github.com/ShuzoShinagawa1102/offenro/internal/core/fulfillment"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/merchant"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/search"
 	"github.com/ShuzoShinagawa1102/offenro/internal/domain/travelhotel"
@@ -51,6 +53,9 @@ func TestMerchantRegistrationSearchAndCheckout(t *testing.T) {
 	merchantOfferRef := "merchant-private-room-reference"
 	expiresAt := time.Now().UTC().Add(20 * time.Minute).Truncate(time.Second)
 	var revalidateCalled atomic.Bool
+	var reservationCalled atomic.Bool
+	var reservationMu sync.Mutex
+	reservations := make(map[string]map[string]any)
 	merchantServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
@@ -83,6 +88,36 @@ func TestMerchantRegistrationSearchAndCheckout(t *testing.T) {
 					"prefecture_name": "Kanagawa", "city": "Yokohama",
 				}, "stay": map[string]any{"check_in": "2026-09-10", "check_out": "2026-09-12"},
 			}})
+		case r.Method == http.MethodPost && r.URL.Path == "/travel/hotel/reservations":
+			idempotencyKey := r.Header.Get("Idempotency-Key")
+			if idempotencyKey == "" {
+				http.Error(w, "missing idempotency key", http.StatusBadRequest)
+				return
+			}
+			var request struct {
+				MerchantOfferRef string `json:"merchant_offer_ref"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&request); err != nil || request.MerchantOfferRef != merchantOfferRef {
+				http.Error(w, "invalid reservation", http.StatusBadRequest)
+				return
+			}
+			reservationCalled.Store(true)
+			result := map[string]any{"merchant_order_ref": "reservation-1", "status": "CONFIRMED"}
+			reservationMu.Lock()
+			reservations[idempotencyKey] = result
+			reservationMu.Unlock()
+			w.WriteHeader(http.StatusCreated)
+			writeJSON(t, w, result)
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/travel/hotel/reservations/by-idempotency-key/"):
+			idempotencyKey := strings.TrimPrefix(r.URL.Path, "/travel/hotel/reservations/by-idempotency-key/")
+			reservationMu.Lock()
+			result, ok := reservations[idempotencyKey]
+			reservationMu.Unlock()
+			if !ok {
+				http.NotFound(w, r)
+				return
+			}
+			writeJSON(t, w, result)
 		default:
 			http.NotFound(w, r)
 		}
@@ -101,9 +136,10 @@ func TestMerchantRegistrationSearchAndCheckout(t *testing.T) {
 	managementService := merchant.NewManagementService(store, registry)
 	searchService := search.NewService(store, registry, search.DefaultMerchantLimit, search.DefaultOfferLimit)
 	cartService := cart.NewService(store, store, codec, store, registry)
+	fulfillmentService := fulfillment.NewService(store, store, registry)
 	server := httptest.NewServer(httpserver.New(
 		managementapi.New(managementService, managementToken),
-		protocolapi.New(cartService),
+		protocolapi.New(cartService, fulfillmentService),
 		travelhotelapi.New(searchService),
 	))
 	defer server.Close()
@@ -177,6 +213,12 @@ func TestMerchantRegistrationSearchAndCheckout(t *testing.T) {
 		PurchaseID string `json:"purchase_id"`
 		Status     string `json:"status"`
 		Total      int64  `json:"total_amount"`
+		Items      []struct {
+			ItemID string `json:"item_id"`
+		} `json:"items"`
+		Fulfillments []struct {
+			Status string `json:"status"`
+		} `json:"fulfillments"`
 	}
 	requestJSON(t, server.Client(), http.MethodPost, server.URL+"/v1/carts/"+createdCart.CartID+"/checkout", "",
 		nil, http.StatusCreated, &purchase)
@@ -185,6 +227,20 @@ func TestMerchantRegistrationSearchAndCheckout(t *testing.T) {
 	}
 	if purchase.Status != "CREATED" || purchase.Total != 12000 {
 		t.Fatalf("purchase = %#v, want CREATED and revalidated total 12000", purchase)
+	}
+	if len(purchase.Items) != 1 {
+		t.Fatalf("purchase items = %d, want 1", len(purchase.Items))
+	}
+	requestJSON(t, server.Client(), http.MethodPost, server.URL+"/v1/purchases/"+purchase.PurchaseID+"/confirm", "",
+		map[string]any{"fulfillment_inputs": []map[string]any{{
+			"purchase_item_id": purchase.Items[0].ItemID,
+			"details":          map[string]any{"lead_guest_name": "Integration Buyer", "email": "buyer@example.com"},
+		}}}, http.StatusOK, &purchase)
+	if !reservationCalled.Load() {
+		t.Fatal("Merchant reservation API was not called")
+	}
+	if purchase.Status != "CONFIRMED" || len(purchase.Fulfillments) != 1 || purchase.Fulfillments[0].Status != "CONFIRMED" {
+		t.Fatalf("confirmed purchase = %#v, want CONFIRMED fulfillment", purchase)
 	}
 
 	var checkedOutCart struct {
@@ -197,8 +253,8 @@ func TestMerchantRegistrationSearchAndCheckout(t *testing.T) {
 	}
 	requestJSON(t, server.Client(), http.MethodGet, server.URL+"/v1/purchases/"+purchase.PurchaseID, "", nil,
 		http.StatusOK, &purchase)
-	if purchase.Status != "CREATED" {
-		t.Fatalf("persisted purchase status = %s, want CREATED", purchase.Status)
+	if purchase.Status != "CONFIRMED" {
+		t.Fatalf("persisted purchase status = %s, want CONFIRMED", purchase.Status)
 	}
 }
 

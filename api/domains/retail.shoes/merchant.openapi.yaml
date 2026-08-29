@@ -54,3 +54,64 @@ paths:
                 $ref: "./schemas.yaml#/components/schemas/RetailShoesRevalidateResponse"
         "404":
           description: Offer is no longer available
+
+  /retail/shoes/orders:
+    post:
+      operationId: createRetailShoesOrder
+      summary: Create an idempotent shoe order
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas.yaml#/components/schemas/RetailShoesOrderRequest"
+      responses:
+        "200":
+          description: Existing order result for the same idempotency key
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/RetailShoesOrderResult"
+        "201":
+          description: Order accepted
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/RetailShoesOrderResult"
+        "409":
+          description: Order rejected
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/RetailShoesOrderResult"
+
+  /retail/shoes/orders/by-idempotency-key/{idempotency_key}:
+    get:
+      operationId: getRetailShoesOrderByIdempotencyKey
+      summary: Resolve an order after an uncertain response
+      parameters:
+        - name: idempotency_key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order result
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas.yaml#/components/schemas/RetailShoesOrderResult"
+        "404":
+          description: Order not found
+
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string

@@ -33,6 +33,7 @@ internal/codegen/domains/{go-domain}/
 internal/domain/{go-domain}/
 ├── extension.go
 ├── searcher.go
+├── fulfiller.go
 ├── discovery.go
 └── index_builder.go
 
@@ -144,6 +145,7 @@ go generate ./...
 internal/domain/{go-domain}/
 ├── extension.go
 ├── searcher.go
+├── fulfiller.go
 ├── discovery.go
 └── index_builder.go
 ```
@@ -155,6 +157,7 @@ internal/domain/{go-domain}/
 - Domain固有Validationを実装する。
 - 生成Offerを包むOffer Adapterを実装する。
 - Searcher、Discovery、IndexBuilderをExtensionとしてまとめる。
+- Merchant注文・予約を実装するFulfillerをExtensionとしてまとめる。
 
 #### searcher.go
 
@@ -168,6 +171,13 @@ internal/domain/{go-domain}/
 手書きでHTTP RequestやJSONモデルを再実装しない。
 
 Merchant向けOfferには`merchant_offer_ref`、Agent向けOfferには`offer_id`を定義する。同じ値を流用したり、文字列連結でMerchant参照値をAgentへ露出したりしない。
+
+#### fulfiller.go
+
+- Generated Merchant ClientでDomain固有の注文・予約APIを呼ぶ。
+- Protocolから渡されたOpaqueな`details`を生成モデルへ変換して検証する。
+- Merchant APIへ冪等キーを送り、結果不明時に同じキーで状態照会できるようにする。
+- Domain固有Responseを共通のMerchantFulfillment状態へ変換する。
 
 #### discovery.go
 

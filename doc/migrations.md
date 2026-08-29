@@ -7,6 +7,7 @@
 - 適用済みのSQLは変更せず、変更内容を新しいSQLとして追加する
 - 各SQLに`-- +goose Up`と`-- +goose Down`を記述する
 - スキーマ設計は[Database Model](database-model.md)を参照する
+- Schema変更ではDatabase Model、Migration、Query、Coreモデルを同じ変更で更新する
 - `db/migrations`をsqlcのSchema入力としても使用する
 
 新規SQLの作成：

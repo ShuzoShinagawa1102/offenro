@@ -183,3 +183,40 @@ components:
       properties:
         offer:
           $ref: "#/components/schemas/TravelHotelMerchantOffer"
+
+    TravelHotelReservationDetails:
+      type: object
+      required: [lead_guest_name, email]
+      properties:
+        lead_guest_name:
+          type: string
+        email:
+          type: string
+          format: email
+
+    TravelHotelReservationRequest:
+      type: object
+      required: [merchant_offer_ref, purchase_id, purchase_item_id, buyer_ref, details]
+      properties:
+        merchant_offer_ref:
+          type: string
+        purchase_id:
+          type: string
+        purchase_item_id:
+          type: string
+        buyer_ref:
+          type: string
+        details:
+          $ref: "#/components/schemas/TravelHotelReservationDetails"
+
+    TravelHotelReservationResult:
+      type: object
+      required: [merchant_order_ref, status]
+      properties:
+        merchant_order_ref:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, REJECTED]
+        failure_code:
+          type: string

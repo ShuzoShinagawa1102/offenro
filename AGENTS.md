@@ -2,7 +2,7 @@
 
 ## プロジェクト概要
 
-Offenroは、成果報酬型のエージェントコマースを成立させるためのプロトコルである。Merchant Management APIでMerchant／Capability／Incentiveを登録し、Agentから構造化された検索条件を受け取り、Merchant Live APIから最新Offerを取得して統合し、CartからCheckoutを経てPurchaseを生成する。
+Offenroは、成果報酬型のエージェントコマースを成立させるためのプロトコルである。Merchant Management APIでMerchant／Capability／Incentiveを登録し、Agentから構造化された検索条件を受け取り、Merchant Live APIから最新Offerを取得して統合する。CartからCheckoutでPurchaseを生成し、Purchase ItemごとのMerchant注文・予約成立後にPurchaseを`CONFIRMED`へ遷移させる。
 
 現在のPrototypeは、次のDomain Extensionを持つ。
 
@@ -97,13 +97,14 @@ api/management/
 
 ## 開発者がDomain追加・変更時に触る場所
 
-Domainの主要な手書き実装は、意図的に次の4ファイルへ絞る。
+Domainの主要な手書き実装は、意図的に次の5ファイルへ絞る。
 
 ```text
 internal/domain/{domain}/
 ├── generated/       # 自動生成。編集禁止
 ├── extension.go     # Core登録と薄いModel Adapter
 ├── searcher.go      # Merchant Live Search／Offer Revalidate
+├── fulfiller.go     # Merchant注文・予約作成／結果照会
 ├── discovery.go     # Merchant選定
 └── index_builder.go # CatalogからIndexを生成
 ```
@@ -131,7 +132,7 @@ APIフィールドを追加・変更するときは、`extension.go`や生成Go�
 1. `api/domains/{domain}/`へSchemas、Agent API、Merchant APIを追加する。
 2. `internal/codegen/domains/{domain}/`へ生成設定と生成Directiveを追加する。
 3. `model`、`agent`、`merchant`パッケージを生成する。
-4. `extension.go`、`searcher.go`、`discovery.go`、`index_builder.go`を実装する。
+4. `extension.go`、`searcher.go`、`fulfiller.go`、`discovery.go`、`index_builder.go`を実装する。
 5. `internal/platform/domainapi/{domain}/`へDomain API Handler Adapterを追加する。
 6. `cmd/server/main.go`でDomain ExtensionとDomain API Handlerを登録する。
 
@@ -161,6 +162,26 @@ Domain Offer Adapter
 Agent Response
 ```
 
+## Merchant Fulfillmentフロー
+
+```text
+Protocol Confirm API
+↓
+Core Fulfillment Use Case
+↓
+Purchase ItemごとにPENDINGと冪等キーを保存
+↓
+Domain Fulfiller
+↓
+Generated Merchant Clientで注文・予約作成
+↓
+MerchantFulfillment状態を保存
+↓
+全件成立時だけPurchase CONFIRMED
+```
+
+Merchant APIが結果不明の場合は同じ冪等キーで状態照会し、未作成が確認できた場合だけ同じキーで再送する。外部HTTP通信中はDB Transactionを保持しない。
+
 ## Discovery Index
 
 CoreはIndexerの実行基盤とGeneric Repositoryを持つ。
@@ -177,7 +198,7 @@ Indexの意味は各Domainが持つ。
 Genericな保存形式は次のとおり。
 
 ```text
-domain / dimension / value / merchant_id / supply_count / indexed_at
+capability_id / dimension / value / supply_count / indexed_at
 ```
 
 価格や在庫等の動的情報はIndexへ保存せず、検索時にMerchant Live APIから取得する。
@@ -218,7 +239,7 @@ api/domains/{domain}/merchant.openapi.yaml
 - Agent側はModel、`std-http-server`、`strict-server`を生成する。
 - Merchant側はModelとHTTP Clientを生成する。
 - Protocol共通APIはModel、`std-http-server`、`strict-server`を生成する。
-- 手書きSearcherはGenerated Merchant Clientを使用する。
+- 手書きSearcherとFulfillerはGenerated Merchant Clientを使用する。
 - OpenAPI変更と生成コードを同じ変更に含める。
 - `db/migrations`と`db/queries`からsqlcコードも同じコマンドで生成する。
 
@@ -247,18 +268,18 @@ test/integration/    # PostgreSQLとHTTPを通す結合テスト
 - リアルなHotel空室ロジック
 - 大量のMockデータ
 
-OffenroはContract、Merchant接続、Discovery、Offer統合までを責務とする。
+OffenroはContract、Merchant接続、Discovery、Offer統合、Merchant注文・予約結果の追跡までを責務とする。
 
 ## 技術方針
 
 - HTTP AdapterではGo標準の`net/http`を使用する。
-- DB Schemaの正は`db/migrations`とし、Migrationは`goose`で管理する。
+- 論理DBモデルと設計理由は`doc/database-model.md`、実行可能な物理Schemaの正は`db/migrations`とし、両方を同じ変更で更新する。Migrationは`goose`で管理する。
 - SQL Queryは`db/queries`へ記述し、`sqlc`で`internal/platform/postgres/generated`へ生成する。
 - PostgreSQL接続には`pgx/v5`の`pgxpool`を使用する。
 - 手書きRepositoryはsqlc生成メソッドとCoreモデルの変換に限定し、SQLをGoコードへ記述しない。
 - `internal/platform/postgres/types.go`は型変換補助に限定し、DomainモデルやDB Row型の第二の正にしない。
 - CoreはRepository Interfaceだけを定義し、PostgreSQLの具体技術へ依存しない。
-- Merchant Registry、Discovery Index、Cart、PurchaseはPostgreSQLへ保存する。
+- Merchant Registry、Discovery Index、Cart、Purchase、Merchant FulfillmentはPostgreSQLへ保存する。
 - InMemory Adapterは`internal/testutil`へ置き、テスト用途に限定する。
 - DB接続情報は`DATABASE_URL`で受け取り、アプリケーション起動時にMigrationを実行しない。
 - Merchant HTTPの共通Timeout設定は`internal/platform/httpclient`へ置く。
@@ -266,6 +287,7 @@ OffenroはContract、Merchant接続、Discovery、Offer統合までを責務と�
 - Agent向け`offer_id`とMerchant向け`merchant_offer_ref`を分離し、後者をAgent APIへ公開しない。
 - Checkout時はMerchant Live APIでOfferを再確認し、Purchaseは`CREATED`、Cartは`CHECKED_OUT`として同一Transactionで保存する。
 - `Purchase.CONFIRMED`はMerchant側の注文・予約成立後にのみ設定する。
+- 金額は通貨の最小単位を表す`int64`／PostgreSQL `BIGINT`で保持する。割合を含む`reward_value`だけは`NUMERIC(19, 4)`とする。
 - 自然言語解釈はAgent側の責務とし、Coreには構造化済みConditionを渡す。
 - 必要のない抽象化や機能を先回りして追加しない。
 

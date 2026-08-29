@@ -183,9 +183,13 @@ func (s *Store) Checkout(
 }
 
 func (s *Store) GetPurchase(ctx context.Context, purchaseID string) (model.Purchase, error) {
+	return s.loadPurchase(ctx, purchaseID, cart.ErrNotFound)
+}
+
+func (s *Store) loadPurchase(ctx context.Context, purchaseID string, notFound error) (model.Purchase, error) {
 	row, err := s.queries.GetPurchase(ctx, purchaseID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return model.Purchase{}, fmt.Errorf("%w: purchase", cart.ErrNotFound)
+		return model.Purchase{}, fmt.Errorf("%w: purchase", notFound)
 	}
 	if err != nil {
 		return model.Purchase{}, fmt.Errorf("get purchase: %w", err)
@@ -194,12 +198,17 @@ func (s *Store) GetPurchase(ctx context.Context, purchaseID string) (model.Purch
 	if err != nil {
 		return model.Purchase{}, fmt.Errorf("list purchase items: %w", err)
 	}
+	fulfillmentRows, err := s.listFulfillments(ctx, purchaseID)
+	if err != nil {
+		return model.Purchase{}, err
+	}
 
 	value := model.Purchase{
 		ID: row.PurchaseID, CartID: row.CartID, AgentID: row.AgentID, BuyerRef: row.BuyerRef,
 		Status: model.PurchaseStatus(row.Status), TotalAmount: row.TotalAmount,
 		Currency: row.Currency, PurchasedAt: row.PurchasedAt.Time,
-		Items: make([]model.PurchaseItem, 0, len(itemRows)),
+		Items:        make([]model.PurchaseItem, 0, len(itemRows)),
+		Fulfillments: fulfillmentRows,
 	}
 	for _, item := range itemRows {
 		value.Items = append(value.Items, model.PurchaseItem{

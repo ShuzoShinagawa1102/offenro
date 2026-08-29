@@ -35,3 +35,27 @@ type Merchant struct {
 	Name       string
 	Status     string
 }
+
+type MerchantFulfillment struct {
+	FulfillmentID    string
+	PurchaseItemID   string
+	Status           string
+	IdempotencyKey   string
+	MerchantOrderRef pgtype.Text
+	DetailsSnapshot  []byte
+	ResponseSnapshot []byte
+	FailureCode      pgtype.Text
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type Purchase struct {
+	PurchaseID  string
+	CartID      string
+	AgentID     string
+	BuyerRef    string
+	Status      string
+	TotalAmount int64
+	Currency    string
+	PurchasedAt pgtype.Timestamptz
+}

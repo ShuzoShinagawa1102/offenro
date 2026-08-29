@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/discovery"
+	"github.com/ShuzoShinagawa1102/offenro/internal/core/fulfillment"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/model"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/offer"
 	"github.com/ShuzoShinagawa1102/offenro/internal/core/search"
@@ -19,6 +20,7 @@ type Extension interface {
 	MerchantDiscovery() search.MerchantDiscovery
 	IndexBuilder() discovery.DomainIndexBuilder
 	OfferVerifier() offer.Verifier
+	Fulfiller() fulfillment.DomainFulfiller
 }
 
 type Registry struct {
@@ -53,6 +55,9 @@ func (r *Registry) Register(extension Extension) error {
 	}
 	if extension.OfferVerifier() == nil || extension.OfferVerifier().Domain() != domain {
 		return fmt.Errorf("domain extension %s has a missing or mismatched offer verifier", domain)
+	}
+	if extension.Fulfiller() == nil || extension.Fulfiller().Domain() != domain {
+		return fmt.Errorf("domain extension %s has a missing or mismatched fulfiller", domain)
 	}
 
 	r.mu.Lock()
@@ -111,6 +116,14 @@ func (r *Registry) OfferVerifier(domain model.Domain) (offer.Verifier, bool) {
 		return nil, false
 	}
 	return extension.OfferVerifier(), true
+}
+
+func (r *Registry) Fulfiller(domain model.Domain) (fulfillment.DomainFulfiller, bool) {
+	extension, ok := r.find(domain)
+	if !ok {
+		return nil, false
+	}
+	return extension.Fulfiller(), true
 }
 
 func (r *Registry) BuildCapabilityIndex(
